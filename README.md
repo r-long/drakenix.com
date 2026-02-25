@@ -1,4 +1,1 @@
-drakenix.com
-============
-
-My personal website
+# drakenix.com\n\nPersonal tech portfolio and project showcase.
