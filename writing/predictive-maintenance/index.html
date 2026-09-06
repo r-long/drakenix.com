@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Building a Predictive Maintenance Platform from Scratch | Rich Long</title>
+  <meta name="description" content="How I built PredictiveIQ: sensor ingestion, per-asset Isolation Forest anomaly detection, health scoring, and an LLM advisor. Full walkthrough with real code.">
+  <meta name="author" content="Rich Long">
+  <meta name="keywords" content="predictive maintenance, machine learning, Isolation Forest, FastAPI, Python, industrial AI, anomaly detection, scikit-learn, TimescaleDB, manufacturing AI">
+
+  <link rel="canonical" href="https://drakenix.com/writing/predictive-maintenance/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://drakenix.com/writing/predictive-maintenance/">
+  <meta property="og:title" content="Building a Predictive Maintenance Platform from Scratch">
+  <meta property="og:description" content="Sensor ingestion, per-asset Isolation Forest anomaly detection, health scoring, and an LLM advisor. Full walkthrough with real code.">
+  <meta property="og:site_name" content="Drakenix">
+  <meta property="article:author" content="Rich Long">
+  <meta property="article:published_time" content="2026-09-07">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Building a Predictive Maintenance Platform from Scratch">
+  <meta name="twitter:description" content="Sensor ingestion, Isolation Forest, health scoring, and an LLM advisor. Full walkthrough with real code.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Building a Predictive Maintenance Platform from Scratch",
+    "description": "How to build a predictive maintenance system with Python, FastAPI, scikit-learn Isolation Forest, and an LLM-powered advisor.",
+    "author": { "@type": "Person", "name": "Rich Long", "url": "https://drakenix.com" },
+    "publisher": { "@type": "Organization", "name": "Drakenix", "url": "https://drakenix.com" },
+    "datePublished": "2026-09-07",
+    "url": "https://drakenix.com/writing/predictive-maintenance/",
+    "keywords": ["predictive maintenance", "machine learning", "Isolation Forest", "FastAPI", "manufacturing AI", "anomaly detection"]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: #1e1e2e;
+      --text: #e2e2e8;
+      --text-muted: #7a7a8c;
+      --accent: #c084fc;
+      --accent-dim: rgba(192, 132, 252, 0.12);
+      --orange: #fb923c;
+      --orange-dim: rgba(251, 146, 60, 0.12);
+      --green: #4ade80;
+      --green-dim: rgba(74, 222, 128, 0.12);
+      --blue: #60a5fa;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(10, 10, 15, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .nav-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+    .nav-sep { color: var(--border); }
+    .nav-crumb { font-size: 13px; color: var(--text-muted); }
+
+    /* Article container */
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    .article-header {
+      padding: 64px 0 48px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .article-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--orange);
+      background: var(--orange-dim);
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+
+    .article-title {
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+
+    .article-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 600px;
+      margin-bottom: 28px;
+    }
+
+    .article-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .article-meta span { display: flex; align-items: center; gap: 5px; }
+
+    /* TOC */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 48px;
+    }
+    .toc-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .toc ol {
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .toc a {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .toc a:hover { color: var(--accent); }
+
+    /* Body content */
+    .prose { margin-bottom: 80px; }
+
+    .prose h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 56px 0 20px;
+      padding-top: 8px;
+    }
+
+    .prose h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 36px 0 14px;
+      color: var(--text);
+    }
+
+    .prose p {
+      font-size: 15.5px;
+      line-height: 1.85;
+      color: #c8c8d0;
+      margin-bottom: 20px;
+    }
+
+    .prose strong { color: var(--text); font-weight: 600; }
+
+    .prose a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(192, 132, 252, 0.3);
+    }
+    .prose a:hover { border-bottom-color: var(--accent); }
+
+    .prose ul, .prose ol {
+      padding-left: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .prose li {
+      font-size: 15.5px;
+      line-height: 1.75;
+      color: #c8c8d0;
+    }
+
+    /* Code blocks */
+    .prose pre {
+      background: #0d0d14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 24px 0;
+      position: relative;
+    }
+
+    .code-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .prose pre code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #d4d4d8;
+    }
+
+    .prose code:not(pre code) {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: rgba(192, 132, 252, 0.08);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Callout */
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 28px 0;
+    }
+    .callout.orange { border-left-color: var(--orange); }
+    .callout.green { border-left-color: var(--green); }
+
+    .callout p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    /* Architecture diagram */
+    .arch-diagram {
+      background: #0d0d14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+    .arch-diagram pre {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+    .arch-diagram pre code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #7a7a8c;
+      white-space: pre;
+    }
+
+    /* Table */
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 24px 0;
+    }
+    .prose th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .prose td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: #c8c8d0;
+    }
+    .prose tr:last-child td { border-bottom: none; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+
+    /* Footer */
+    footer {
+      padding: 40px 0 60px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 540px) {
+      .article-header { padding: 40px 0 32px; }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">drakenix</a>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">Writing</span>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">Predictive Maintenance</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="article-header">
+      <span class="article-tag">Predictive Maintenance</span>
+      <h1 class="article-title">Building a Predictive Maintenance Platform from Scratch</h1>
+      <p class="article-subtitle">How I built PredictiveIQ: real-time sensor ingestion, per-asset anomaly detection with Isolation Forest, health scoring, and an LLM advisor that explains failures in plain English.</p>
+      <div class="article-meta">
+        <span>Rich Long</span>
+        <span>·</span>
+        <span>September 2026</span>
+        <span>·</span>
+        <span>~15 min read</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <div class="toc-label">Contents</div>
+      <ol>
+        <li><a href="#problem">The problem with reactive maintenance</a></li>
+        <li><a href="#architecture">Architecture overview</a></li>
+        <li><a href="#data-model">Data model and sensor ingestion</a></li>
+        <li><a href="#features">Feature engineering</a></li>
+        <li><a href="#isolation-forest">Anomaly detection with Isolation Forest</a></li>
+        <li><a href="#health-score">Health scoring</a></li>
+        <li><a href="#llm-advisor">The LLM advisor</a></li>
+        <li><a href="#api">Wiring it up with FastAPI</a></li>
+        <li><a href="#dashboard">The Next.js dashboard</a></li>
+        <li><a href="#lessons">What I'd do differently</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+
+      <h2 id="problem">The problem with reactive maintenance</h2>
+
+      <p>Most manufacturers still run on <strong>reactive maintenance</strong>: equipment breaks, production stops, someone calls the repair crew. The costs are brutal — unplanned downtime runs $260,000 per hour in automotive, and the global tab for reactive maintenance is somewhere north of $400 billion annually.</p>
+
+      <p>The alternative — <strong>preventive maintenance</strong> — is better but blunt. You schedule maintenance every 500 hours or every quarter whether the machine needs it or not. You're throwing labor and parts at equipment that might be fine, while the machines that are actually degrading slip through the cracks between schedules.</p>
+
+      <p><strong>Predictive maintenance</strong> is the upgrade: monitor the machine continuously, detect anomalies in sensor data before they become failures, and schedule maintenance only when the data says to. That's what PredictiveIQ does.</p>
+
+      <p>Here's how I built it.</p>
+
+      <h2 id="architecture">Architecture overview</h2>
+
+      <p>The stack is deliberately simple. I wanted something a small manufacturer could actually run on their existing hardware, not a cloud-first system requiring three AWS services and a data engineering team.</p>
+
+      <div class="arch-diagram">
+        <pre><code>
+  ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+  │  Next.js 14      │────▶│  FastAPI          │────▶│  SQLite /        │
+  │  Dashboard       │     │  Backend          │     │  TimescaleDB     │
+  │  (Tailwind +     │     │  :8000            │     │                  │
+  │   Recharts)      │     │  ML Pipeline      │     │  ML Models       │
+  │  :3000           │     │  (scikit-learn)   │     │  (joblib)        │
+  └──────────────────┘     └──────────────────┘     └──────────────────┘
+                                    │
+                            ┌───────┴────────┐
+                            │  Claude API    │
+                            │  (LLM advisor) │
+                            └────────────────┘
+        </code></pre>
+      </div>
+
+      <ul>
+        <li><strong>FastAPI backend</strong> — async Python, handles sensor ingestion, ML training/scoring, and LLM calls</li>
+        <li><strong>SQLite in dev, TimescaleDB-ready in prod</strong> — TimescaleDB is PostgreSQL with time-series superpowers; the schema works on both</li>
+        <li><strong>scikit-learn Isolation Forest</strong> — per-asset anomaly detection, models stored with joblib</li>
+        <li><strong>Claude API</strong> — explains anomalies in plain English with a template fallback when the key isn't set</li>
+        <li><strong>Next.js 14 dashboard</strong> — fleet overview, equipment detail pages, alert feed</li>
+        <li><strong>Docker Compose</strong> — one command to run everything</li>
+      </ul>
+
+      <div class="callout">
+        <p><strong>On the database choice:</strong> SQLite is fine for a single facility monitoring a few dozen machines. When you need multi-facility or high-frequency ingestion (sub-second), swap to TimescaleDB. The schema is compatible — it's just PostgreSQL under the hood.</p>
+      </div>
+
+      <h2 id="data-model">Data model and sensor ingestion</h2>
+
+      <p>There are two core entities: <strong>Equipment</strong> and <strong>SensorReading</strong>. Equipment records represent physical assets — pumps, motors, conveyors, compressors. SensorReadings are the time-series measurements coming off those assets.</p>
+
+      <span class="code-label">backend/app/models/equipment.py</span>
+      <pre><code>from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy.orm import relationship
+from datetime import datetime
+import enum
+
+class SensorType(str, enum.Enum):
+    vibration = "vibration"
+    temperature = "temperature"
+    current = "current"
+
+class Equipment(Base):
+    __tablename__ = "equipment"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    equipment_type = Column(String)          # pump, motor, conveyor, etc.
+    location = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    readings = relationship("SensorReading", back_populates="equipment")
+    alerts = relationship("Alert", back_populates="equipment")
+
+class SensorReading(Base):
+    __tablename__ = "sensor_readings"
+
+    id = Column(Integer, primary_key=True)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
+    sensor_type = Column(Enum(SensorType), nullable=False)
+    value = Column(Float, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+    equipment = relationship("Equipment", back_populates="readings")</code></pre>
+
+      <p>The ingestion endpoint accepts a batch of readings — you don't want to open an HTTP connection per sensor sample.</p>
+
+      <span class="code-label">backend/app/routers/sensors.py</span>
+      <pre><code>@router.post("/sensors", response_model=list[SensorReadingOut])
+async def ingest_sensor_readings(
+    readings: list[SensorReadingCreate],
+    db: AsyncSession = Depends(get_db),
+):
+    db_readings = [SensorReading(**r.model_dump()) for r in readings]
+    db.add_all(db_readings)
+    await db.commit()
+
+    # After ingestion, check for anomalies on affected equipment
+    equipment_ids = {r.equipment_id for r in readings}
+    for eq_id in equipment_ids:
+        await check_and_alert(eq_id, db)
+
+    return db_readings</code></pre>
+
+      <p>That <code>check_and_alert</code> call is where it gets interesting.</p>
+
+      <h2 id="features">Feature engineering</h2>
+
+      <p>Raw sensor values aren't very useful for anomaly detection. A vibration reading of 2.3 mm/s means nothing without context — is that high for this machine? Is it trending up? The signal that matters is the <em>shape</em> of the data over time.</p>
+
+      <p>For each sensor type, I compute four rolling features over a window of 20 readings:</p>
+
+      <ul>
+        <li><strong>Rolling mean</strong> — the baseline signal level. Drifting mean often signals wear.</li>
+        <li><strong>Rolling standard deviation</strong> — signal variability. High std dev on vibration = imbalance, looseness, or bearing degradation.</li>
+        <li><strong>Rate of change</strong> — first difference between consecutive readings. Sudden spikes matter even when the rolling stats look normal.</li>
+        <li><strong>Latest value</strong> — the raw reading itself, as a feature.</li>
+      </ul>
+
+      <span class="code-label">backend/app/services/features.py</span>
+      <pre><code>import pandas as pd
+import numpy as np
+from typing import Sequence
+
+WINDOW = 20
+
+def compute_features(readings: Sequence[float]) -> dict[str, float] | None:
+    """
+    Compute rolling features from a sequence of raw sensor values.
+    Returns None if there's not enough data to fill a window.
+    """
+    if len(readings) < WINDOW:
+        return None
+
+    series = pd.Series(readings)
+
+    rolling_mean = series.rolling(WINDOW).mean().iloc[-1]
+    rolling_std  = series.rolling(WINDOW).std().iloc[-1]
+    rate_of_change = series.diff().iloc[-1]
+    latest = series.iloc[-1]
+
+    return {
+        "rolling_mean": rolling_mean,
+        "rolling_std": rolling_std if not np.isnan(rolling_std) else 0.0,
+        "rate_of_change": rate_of_change if not np.isnan(rate_of_change) else 0.0,
+        "latest_value": latest,
+    }</code></pre>
+
+      <p>These four features are computed per sensor type (vibration, temperature, current), giving the model a 12-dimensional feature vector per equipment check — enough signal to detect meaningful anomalies without overfitting to noise.</p>
+
+      <h2 id="isolation-forest">Anomaly detection with Isolation Forest</h2>
+
+      <p>I chose <strong>Isolation Forest</strong> for a few reasons specific to manufacturing:</p>
+
+      <ol>
+        <li><strong>Unsupervised</strong> — you rarely have labeled failure data. Isolation Forest learns what "normal" looks like and flags deviations, no failure labels required.</li>
+        <li><strong>Per-asset training</strong> — a pump and a conveyor have completely different normal signatures. Training one global model would be useless. Isolation Forest is cheap enough to train per-asset.</li>
+        <li><strong>Interpretable contamination parameter</strong> — setting <code>contamination=0.05</code> means "expect roughly 5% anomalies in training data." You can tune this per asset type based on domain knowledge.</li>
+        <li><strong>Fast inference</strong> — scoring a new reading takes microseconds. No latency problem when checking after every batch ingestion.</li>
+      </ol>
+
+      <span class="code-label">backend/app/ml/anomaly.py</span>
+      <pre><code>import numpy as np
+import joblib
+from pathlib import Path
+from sklearn.ensemble import IsolationForest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.features import compute_features
+
+MODEL_DIR = Path("models")
+MODEL_DIR.mkdir(exist_ok=True)
+
+def model_path(equipment_id: int) -> Path:
+    return MODEL_DIR / f"equipment_{equipment_id}.joblib"
+
+async def train_model(equipment_id: int, db: AsyncSession) -> dict:
+    """
+    Fetch historical readings for this equipment, compute features,
+    and train a fresh Isolation Forest. Saves the model to disk.
+    """
+    readings_by_type = await fetch_readings_grouped(equipment_id, db)
+
+    feature_matrix = []
+    for sensor_type, values in readings_by_type.items():
+        feats = compute_features(values)
+        if feats:
+            feature_matrix.append(list(feats.values()))
+
+    if not feature_matrix:
+        return {"status": "insufficient_data"}
+
+    X = np.array(feature_matrix)
+
+    clf = IsolationForest(
+        n_estimators=100,
+        contamination=0.05,   # expect ~5% anomalies in historical data
+        random_state=42,
+    )
+    clf.fit(X)
+
+    joblib.dump(clf, model_path(equipment_id))
+    return {"status": "trained", "samples": len(X)}
+
+def score_reading(equipment_id: int, feature_vector: list[float]) -> float:
+    """
+    Returns the raw anomaly score from Isolation Forest.
+    More negative = more anomalous. Typically in range [-0.5, 0.5].
+    """
+    path = model_path(equipment_id)
+    if not path.exists():
+        return 0.0   # no model yet, can't score
+
+    clf = joblib.load(path)
+    X = np.array([feature_vector])
+    score = clf.score_samples(X)[0]   # lower = more anomalous
+    return float(score)</code></pre>
+
+      <div class="callout orange">
+        <p><strong>Important:</strong> Train the model on normal operating data, not data that includes failures you already know about. The model learns the shape of "healthy" and flags deviations from it. If you include known-bad data in training, the model will learn that bad behavior is normal.</p>
+      </div>
+
+      <h2 id="health-score">Health scoring</h2>
+
+      <p>The raw Isolation Forest anomaly score is a float in roughly [-0.5, 0.5]. That's not useful to show an operator. I map it to a 0-100 health score with three status zones:</p>
+
+      <span class="code-label">backend/app/services/health.py</span>
+      <pre><code>def anomaly_score_to_health(raw_score: float) -> int:
+    """
+    Map Isolation Forest raw score to a 0-100 health score.
+    IF score: higher = more normal, lower = more anomalous.
+    Typical range: [-0.5, 0.5]. We clamp and invert to get health.
+    """
+    # Clamp to expected range
+    clamped = max(-0.5, min(0.5, raw_score))
+
+    # Normalize to [0, 1]: 0.5 (normal) → 1.0, -0.5 (anomalous) → 0.0
+    normalized = (clamped + 0.5) / 1.0
+
+    # Scale to 0-100
+    return round(normalized * 100)
+
+def health_to_status(score: int) -> str:
+    if score >= 75:
+        return "healthy"
+    elif score >= 50:
+        return "warning"
+    else:
+        return "critical"</code></pre>
+
+      <table>
+        <thead>
+          <tr><th>Score</th><th>Status</th><th>Recommended action</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>75–100</td><td>Healthy</td><td>Normal monitoring interval</td></tr>
+          <tr><td>50–74</td><td>Warning</td><td>Increase monitoring, schedule inspection</td></tr>
+          <tr><td>0–49</td><td>Critical</td><td>Immediate attention required</td></tr>
+        </tbody>
+      </table>
+
+      <p>When a score drops below the warning threshold, the system automatically creates an Alert record and the dashboard surfaces it. The alert lifecycle is active → acknowledged → resolved, matching how maintenance teams actually work.</p>
+
+      <h2 id="llm-advisor">The LLM advisor</h2>
+
+      <p>Here's where this goes from "ML dashboard" to something actually useful. A health score of 42 tells a maintenance manager something is wrong. It doesn't tell them <em>what</em> is wrong or <em>what to do about it</em>.</p>
+
+      <p>The LLM advisor takes the current sensor readings, computed features, health score, and equipment type — and asks Claude to explain what's happening in plain English and suggest a next action.</p>
+
+      <span class="code-label">backend/app/services/explainer.py</span>
+      <pre><code>import anthropic
+from app.config import settings
+
+SYSTEM_PROMPT = """You are an industrial maintenance advisor. You analyze sensor data
+from manufacturing equipment and explain anomalies in plain English.
+
+When given sensor readings and an anomaly score, you:
+1. Identify the most likely cause based on the sensor signatures
+2. Explain what it means for the machine in non-technical language
+3. Recommend a specific next action
+
+Be concise. Maintenance technicians need actionable information, not lectures.
+Respond in 3-4 sentences max."""
+
+async def explain_anomaly(
+    equipment_name: str,
+    equipment_type: str,
+    sensor_summary: dict,
+    health_score: int,
+) -> str:
+    if not settings.ANTHROPIC_API_KEY:
+        return _template_fallback(health_score, sensor_summary)
+
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+    user_message = f"""
+Equipment: {equipment_name} ({equipment_type})
+Health score: {health_score}/100
+
+Sensor readings:
+- Vibration: mean={sensor_summary['vibration_mean']:.2f}, std={sensor_summary['vibration_std']:.2f}
+- Temperature: mean={sensor_summary['temp_mean']:.1f}°F, std={sensor_summary['temp_std']:.2f}
+- Current: mean={sensor_summary['current_mean']:.1f}A, std={sensor_summary['current_std']:.2f}
+
+What's likely happening and what should the technician do?
+"""
+
+    message = await client.messages.create(
+        model=settings.LLM_MODEL,
+        max_tokens=256,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+    return message.content[0].text
+
+def _template_fallback(health_score: int, sensor_summary: dict) -> str:
+    """Used when no API key is configured — keeps the UI functional in demos."""
+    status = "critical" if health_score < 50 else "warning"
+    return (
+        f"Equipment health is {status} at {health_score}/100. "
+        f"Elevated vibration readings (mean: {sensor_summary['vibration_mean']:.2f}) "
+        f"suggest possible bearing wear or imbalance. "
+        f"Recommend scheduling an inspection and checking lubrication levels."
+    )</code></pre>
+
+      <div class="callout">
+        <p><strong>On the system prompt:</strong> "Be concise" and "3-4 sentences max" are load-bearing instructions here. Without length constraints, LLMs default to wall-of-text explanations. Maintenance techs are on a noisy shop floor with dirty gloves — they need a sentence, not a paragraph.</p>
+      </div>
+
+      <h2 id="api">Wiring it up with FastAPI</h2>
+
+      <p>The ML endpoints follow a clear pattern: train, score, explain. They're all under <code>/api/ml</code>.</p>
+
+      <span class="code-label">backend/app/routers/ml.py (abbreviated)</span>
+      <pre><code>@router.post("/ml/train")
+async def train(equipment_id: int, db: AsyncSession = Depends(get_db)):
+    """Train or retrain the anomaly model for a specific asset."""
+    result = await train_model(equipment_id, db)
+    return result
+
+@router.get("/ml/health/{equipment_id}")
+async def get_health(equipment_id: int, db: AsyncSession = Depends(get_db)):
+    """Compute current health score for an asset."""
+    readings = await fetch_recent_readings(equipment_id, db)
+    features = build_feature_vector(readings)
+    raw_score = score_reading(equipment_id, features)
+    health = anomaly_score_to_health(raw_score)
+    return {
+        "equipment_id": equipment_id,
+        "health_score": health,
+        "status": health_to_status(health),
+        "anomaly_score": raw_score,
+    }
+
+@router.post("/ml/explain")
+async def explain(req: ExplainRequest, db: AsyncSession = Depends(get_db)):
+    """Get an LLM-powered explanation of current equipment status."""
+    equipment = await get_equipment(req.equipment_id, db)
+    sensor_summary = await build_sensor_summary(req.equipment_id, db)
+    explanation = await explain_anomaly(
+        equipment.name,
+        equipment.equipment_type,
+        sensor_summary,
+        req.health_score,
+    )
+    return {"explanation": explanation}</code></pre>
+
+      <p>The whole backend starts with a standard FastAPI app entry point. One thing worth noting: I use <code>lifespan</code> rather than the deprecated <code>on_event</code> handlers for database initialization.</p>
+
+      <span class="code-label">backend/app/main.py</span>
+      <pre><code>from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.database import init_db
+from app.routers import equipment, sensors, alerts, ml
+from app.config import settings
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()   # create tables on startup
+    yield
+
+app = FastAPI(title="PredictiveIQ API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(equipment.router, prefix="/api")
+app.include_router(sensors.router, prefix="/api")
+app.include_router(alerts.router, prefix="/api")
+app.include_router(ml.router, prefix="/api")</code></pre>
+
+      <h2 id="dashboard">The Next.js dashboard</h2>
+
+      <p>The frontend has three views:</p>
+
+      <ul>
+        <li><strong>Fleet overview</strong> (<code>/</code>) — summary cards with fleet health stats, equipment table with color-coded health bars</li>
+        <li><strong>Equipment detail</strong> (<code>/equipment/[id]</code>) — live sensor charts via Recharts, health trend, alert feed, and the AI advisor panel</li>
+        <li><strong>Alert feed</strong> (<code>/alerts</code>) — filterable list of all alerts with acknowledge/resolve actions</li>
+      </ul>
+
+      <p>The AI advisor component is the most interesting UI piece. It sits on the equipment detail page and calls <code>/api/ml/explain</code> on demand:</p>
+
+      <span class="code-label">frontend/components/AiAdvisor.tsx (abbreviated)</span>
+      <pre><code>'use client'
+import { useState } from 'react'
+
+export function AiAdvisor({ equipmentId, healthScore }: Props) {
+  const [explanation, setExplanation] = useState&lt;string | null&gt;(null)
+  const [loading, setLoading] = useState(false)
+
+  async function analyze() {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/ml/explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ equipment_id: equipmentId, health_score: healthScore }),
+      })
+      const data = await res.json()
+      setExplanation(data.explanation)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    &lt;div className="rounded-xl border border-zinc-800 p-5"&gt;
+      &lt;div className="text-xs font-mono text-purple-400 uppercase tracking-widest mb-3"&gt;
+        AI Advisor
+      &lt;/div&gt;
+      {explanation ? (
+        &lt;p className="text-sm text-zinc-300 leading-relaxed"&gt;{explanation}&lt;/p&gt;
+      ) : (
+        &lt;button onClick={analyze} disabled={loading}
+          className="text-sm px-4 py-2 bg-purple-500/10 text-purple-400 rounded-lg"&gt;
+          {loading ? 'Analyzing...' : 'Analyze current status'}
+        &lt;/button&gt;
+      )}
+    &lt;/div&gt;
+  )
+}</code></pre>
+
+      <h2 id="lessons">What I'd do differently</h2>
+
+      <p>A few things I'd change building this again:</p>
+
+      <p><strong>Start with TimescaleDB, not SQLite.</strong> The schema migration from SQLite to TimescaleDB is trivial, but the operational story is cleaner if you just start with Postgres from day one. TimescaleDB's automatic partitioning on the timestamp column matters once you're ingesting readings every few seconds across dozens of machines.</p>
+
+      <p><strong>Add a model versioning layer.</strong> Right now the model is just a joblib file. That works, but when you retrain (which you should do periodically as the machine ages), you lose the ability to compare model versions or roll back if a new model starts producing bad scores. Something like MLflow is overkill for an MVP, but even a simple timestamp-tagged directory would help.</p>
+
+      <p><strong>Per-sensor-type models, not per-asset.</strong> I train one model per asset using all sensor types together. In practice, vibration anomalies and temperature anomalies have different signatures and different failure modes. Training separate models per sensor type per asset gives you sharper detection and better explainability — you know which sensor triggered the anomaly, not just that something's wrong.</p>
+
+      <p><strong>The LLM call should be async and cached.</strong> Right now the explain endpoint is blocking and called on demand. For a production system, I'd precompute explanations whenever the health score drops below a threshold, cache the result, and serve it instantly from the UI. LLM latency is noticeable on the shop floor.</p>
+
+      <hr class="divider">
+
+      <p>The full source is private (it's a commercial project), but the architecture here is complete enough to build from. If you have questions about any of the implementation details, <a href="mailto:r.david.long@gmail.com">reach out</a> or find me on <a href="https://www.linkedin.com/in/rich-long-mba/">LinkedIn</a>.</p>
+
+      <p>Next in this series: <strong>RAG for Industrial Documentation</strong> — how I built The Guide, including chunking strategies for technical manuals and why BYOM architecture matters for manufacturing customers.</p>
+
+    </article>
+
+    <footer>
+      <a href="/">&larr; drakenix.com</a>
+      <a href="/writing/">More writing</a>
+    </footer>
+  </div>
+
+</body>
+</html>
