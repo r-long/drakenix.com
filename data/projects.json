@@ -1,0 +1,154 @@
+{
+  "categories": [
+    {
+      "id": "manufacturing",
+      "label": "Manufacturing AI",
+      "projects": [
+        {
+          "id": "predictiveiq",
+          "name": "PredictiveIQ",
+          "icon": "🏭",
+          "icon_color": "orange",
+          "tags": ["AI", "Platform"],
+          "tag_styles": ["tag-ai", "tag-platform"],
+          "github_repo": "r-long/predictive-maintenance",
+          "github_public": false,
+          "article_url": "/writing/predictive-maintenance/",
+          "last_pushed_at": null,
+          "description": "Industrial equipment fails without warning — costing manufacturers days of downtime and thousands in emergency repairs. PredictiveIQ ingests real-time sensor data, runs per-asset anomaly detection with Isolation Forest, computes live health scores, and routes anomalies to an LLM-powered advisor that explains what's wrong in plain English. Integrates with Ignition SCADA historians.",
+          "stack": ["Python", "FastAPI", "scikit-learn", "Next.js", "TimescaleDB", "SCADA", "Claude API"]
+        },
+        {
+          "id": "the-guide",
+          "name": "The Guide",
+          "icon": "📖",
+          "icon_color": "accent",
+          "tags": ["AI"],
+          "tag_styles": ["tag-ai"],
+          "github_repo": null,
+          "github_public": false,
+          "article_url": "/writing/rag-industrial-docs/",
+          "last_pushed_at": null,
+          "description": "Operators shouldn't have to page through 500-page manuals mid-shift. The Guide is a document intelligence platform that lets manufacturers upload SOPs, safety manuals, and equipment guides — then ask questions in plain language and get cited, safety-aware answers. BYOM architecture means customers bring their own LLM provider and data stays on-premises.",
+          "stack": ["Python", "FastAPI", "RAG", "pgvector", "React", "Docker"]
+        },
+        {
+          "id": "harmony-core",
+          "name": "Harmony Core",
+          "icon": "⚙️",
+          "icon_color": "green",
+          "tags": ["AI", "Platform"],
+          "tag_styles": ["tag-ai", "tag-platform"],
+          "github_repo": "r-long/harmony-core",
+          "github_public": false,
+          "article_url": "/writing/onprem-vs-cloud-ai/",
+          "last_pushed_at": null,
+          "description": "SMB manufacturers need AI capabilities but can't send proprietary process data to the cloud. Harmony Core is a fully on-premises AI agent that runs on an edge server inside the facility — local LLM inference, local embeddings, nothing leaves the building. Same feature set as the cloud version, zero data egress. Ships as a single docker compose stack.",
+          "stack": ["Fastify", "Next.js", "Prisma", "PostgreSQL", "Ollama", "transformers.js", "Docker"]
+        },
+        {
+          "id": "harmony-cloud",
+          "name": "Harmony Cloud",
+          "icon": "☁️",
+          "icon_color": "red",
+          "tags": ["SaaS", "AI"],
+          "tag_styles": ["tag-saas", "tag-ai"],
+          "github_repo": "r-long/harmony-cloud",
+          "github_public": false,
+          "article_url": null,
+          "last_pushed_at": null,
+          "description": "The managed-hosting sibling of Harmony Core. Manufacturers who want the AI capability without the infrastructure overhead get the same agent, same feature set, fully hosted. Harmony Cloud handles authentication, model routing, tenant isolation, and uptime — customers focus on their process, not their stack.",
+          "stack": ["TypeScript", "Multi-tenant", "Railway", "Vercel"]
+        }
+      ]
+    },
+    {
+      "id": "enterprise",
+      "label": "Enterprise Tools",
+      "projects": [
+        {
+          "id": "quoteforge",
+          "name": "QuoteForge",
+          "icon": "💰",
+          "icon_color": "blue",
+          "tags": ["AI", "Integration"],
+          "tag_styles": ["tag-ai", "tag-integration"],
+          "github_repo": "r-long/quoteforge",
+          "github_public": false,
+          "article_url": null,
+          "last_pushed_at": null,
+          "description": "Estimators spend hours digging through historical quotes to price new jobs. QuoteForge uses semantic search over historical RFP data — hybrid vector + structured search — to surface relevant precedents and generate LLM-powered cost and lead time recommendations. Cloud-portable: runs identically on AWS or Azure with no configuration changes.",
+          "stack": ["Python", "FastAPI", "PostgreSQL", "pgvector", "React", "Azure OpenAI", "AWS Bedrock"]
+        },
+        {
+          "id": "mcp-quoting",
+          "name": "MCP Quoting System",
+          "icon": "🔌",
+          "icon_color": "blue",
+          "tags": ["Integration", "AI"],
+          "tag_styles": ["tag-integration", "tag-ai"],
+          "github_repo": "r-long/mcp-quoting-system",
+          "github_public": true,
+          "github_url": "https://github.com/r-long/mcp-quoting-system",
+          "article_url": "/writing/mcp-enterprise-integration/",
+          "last_pushed_at": null,
+          "description": "An MCP (Model Context Protocol) implementation for intelligent quoting workflows. Takes incoming RFPs, compares them against historical quotes using semantic similarity, and surfaces matched precedents for review. Demonstrates MCP as a practical enterprise integration primitive — structured tool calls, not prompt engineering.",
+          "stack": ["TypeScript", "MCP", "Node.js"]
+        },
+        {
+          "id": "enterprise-agent",
+          "name": "Enterprise Agent",
+          "icon": "🤖",
+          "icon_color": "accent",
+          "tags": ["AI", "Platform"],
+          "tag_styles": ["tag-ai", "tag-platform"],
+          "github_repo": "r-long/enterprise-agent",
+          "github_public": false,
+          "article_url": "/writing/multi-tenant-ai-agents/",
+          "last_pushed_at": null,
+          "description": "Multi-tenant AI agent platform built for real production workloads. Each user gets complete session isolation — separate conversation history, memory, and preferences, zero cross-contamination. Pluggable adapter architecture lets you swap local (dev) and Azure (prod) implementations for memory, LLM, auth, storage, and messaging without code changes. Role-based tool access control built in.",
+          "stack": ["Python", "FastAPI", "Redis", "PostgreSQL", "Azure", "Docker"]
+        }
+      ]
+    },
+    {
+      "id": "experiments",
+      "label": "Experiments & Tools",
+      "projects": [
+        {
+          "id": "claude-telegram-relay",
+          "name": "Claude Telegram Relay",
+          "icon": "💬",
+          "icon_color": "green",
+          "tags": ["Tool"],
+          "tag_styles": ["tag-tool"],
+          "github_repo": "r-long/claude-telegram-relay",
+          "github_public": true,
+          "github_url": "https://github.com/r-long/claude-telegram-relay",
+          "article_url": null,
+          "last_pushed_at": null,
+          "description": "Personal AI assistant running on Telegram backed by Claude Code. Handles text, photos, documents, and voice. Maintains semantic memory across sessions via Supabase and checks in proactively. A bootstrap template for anyone who wants a persistent AI assistant without the complexity of building infrastructure from scratch.",
+          "stack": ["TypeScript", "Claude Code", "Telegram Bot API", "Supabase"]
+        },
+        {
+          "id": "second-brain",
+          "name": "Second Brain",
+          "icon": "🧠",
+          "icon_color": "accent",
+          "tags": ["Tool"],
+          "tag_styles": ["tag-tool"],
+          "github_repo": "r-long/second-brain",
+          "github_public": false,
+          "article_url": null,
+          "last_pushed_at": null,
+          "description": "Personal knowledge management dashboard built on top of an OpenClaw workspace. Surfaces memories, daily notes, documents, tasks, and projects through a unified Next.js interface with full-text search and calendar view. An exploration of what a truly personal AI-native PKM looks like when the underlying data is structured for agent consumption.",
+          "stack": ["Next.js 14", "TypeScript", "Tailwind"]
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "last_updated": null,
+    "new_repos_detected": []
+  }
+}
