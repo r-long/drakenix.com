@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Multi-Tenant AI Agents: Session Isolation Patterns | Rich Long</title>
+  <meta name="description" content="How to build AI agent infrastructure where users never see each other's data — pluggable adapters, Redis session caching, PostgreSQL persistence, and role-based tool access in FastAPI.">
+  <meta name="author" content="Rich Long">
+  <meta name="keywords" content="multi-tenant AI, session isolation, FastAPI, Redis, PostgreSQL, AI agents, pluggable adapters, role-based access control, Python, enterprise AI">
+
+  <link rel="canonical" href="https://drakenix.com/writing/multi-tenant-ai-agents/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://drakenix.com/writing/multi-tenant-ai-agents/">
+  <meta property="og:title" content="Multi-Tenant AI Agents: Session Isolation Patterns">
+  <meta property="og:description" content="How to build AI agent infrastructure where users never see each other's data — pluggable adapters, Redis, PostgreSQL, and role-based tool access in FastAPI.">
+  <meta property="og:site_name" content="Drakenix">
+  <meta property="article:author" content="Rich Long">
+  <meta property="article:published_time" content="2026-09-28">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Multi-Tenant AI Agents: Session Isolation Patterns">
+  <meta name="twitter:description" content="How to build AI agent infrastructure where users never see each other's data.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Multi-Tenant AI Agents: Session Isolation Patterns",
+    "description": "How to build AI agent infrastructure where users never see each other's data — pluggable adapters, Redis session caching, PostgreSQL persistence, and role-based tool access in FastAPI.",
+    "author": { "@type": "Person", "name": "Rich Long", "url": "https://drakenix.com" },
+    "publisher": { "@type": "Organization", "name": "Drakenix", "url": "https://drakenix.com" },
+    "datePublished": "2026-09-28",
+    "url": "https://drakenix.com/writing/multi-tenant-ai-agents/",
+    "keywords": ["multi-tenant AI", "session isolation", "FastAPI", "Redis", "PostgreSQL", "AI agents", "enterprise AI"]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
+      --text: #e2e2e8; --text-muted: #7a7a8c;
+      --accent: #c084fc; --accent-dim: rgba(192,132,252,0.12);
+      --orange: #fb923c; --orange-dim: rgba(251,146,60,0.12);
+      --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+      --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+    }
+    body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
+    nav { position:sticky; top:0; z-index:10; background:rgba(10,10,15,0.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:14px 0; }
+    .nav-inner { max-width:760px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:16px; }
+    .nav-logo { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; color:var(--accent); letter-spacing:2px; text-transform:uppercase; text-decoration:none; }
+    .nav-sep { color:var(--border); }
+    .nav-crumb { font-size:13px; color:var(--text-muted); }
+    .container { max-width:720px; margin:0 auto; padding:0 24px; }
+    .article-header { padding:64px 0 48px; border-bottom:1px solid var(--border); margin-bottom:48px; }
+    .article-tag { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:var(--accent); background:var(--accent-dim); padding:4px 10px; border-radius:4px; text-transform:uppercase; letter-spacing:1px; display:inline-block; margin-bottom:20px; }
+    .article-title { font-size:clamp(1.8rem,4vw,2.6rem); font-weight:700; line-height:1.2; letter-spacing:-0.02em; margin-bottom:20px; }
+    .article-subtitle { font-size:1.1rem; color:var(--text-muted); line-height:1.7; max-width:600px; margin-bottom:28px; }
+    .article-meta { display:flex; align-items:center; gap:16px; font-size:13px; color:var(--text-muted); flex-wrap:wrap; }
+    .toc { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:48px; }
+    .toc-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; }
+    .toc ol { padding-left:20px; display:flex; flex-direction:column; gap:6px; }
+    .toc a { font-size:14px; color:var(--text-muted); text-decoration:none; transition:color 0.2s; }
+    .toc a:hover { color:var(--accent); }
+    .prose { margin-bottom:80px; }
+    .prose h2 { font-size:1.5rem; font-weight:700; letter-spacing:-0.01em; margin:56px 0 20px; padding-top:8px; }
+    .prose h3 { font-size:1.1rem; font-weight:600; margin:36px 0 14px; color:var(--text); }
+    .prose p { font-size:15.5px; line-height:1.85; color:#c8c8d0; margin-bottom:20px; }
+    .prose strong { color:var(--text); font-weight:600; }
+    .prose a { color:var(--accent); text-decoration:none; border-bottom:1px solid rgba(192,132,252,0.3); }
+    .prose a:hover { border-bottom-color:var(--accent); }
+    .prose ul, .prose ol { padding-left:24px; margin-bottom:20px; display:flex; flex-direction:column; gap:8px; }
+    .prose li { font-size:15.5px; line-height:1.75; color:#c8c8d0; }
+    .prose pre { background:#0d0d14; border:1px solid var(--border); border-radius:10px; padding:20px; overflow-x:auto; margin:24px 0; }
+    .code-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:block; }
+    .prose pre code { font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; color:#d4d4d8; }
+    .prose code:not(pre code) { font-family:'JetBrains Mono',monospace; font-size:13px; background:rgba(192,132,252,0.08); color:var(--accent); padding:2px 6px; border-radius:4px; }
+    .callout { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:16px 20px; margin:28px 0; }
+    .callout.orange { border-left-color:var(--orange); }
+    .callout.green { border-left-color:var(--green); }
+    .callout p { font-size:14px; color:var(--text-muted); margin-bottom:0; }
+    .prose table { width:100%; border-collapse:collapse; font-size:14px; margin:24px 0; }
+    .prose th { text-align:left; padding:10px 14px; background:var(--surface); color:var(--text-muted); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+    .prose td { padding:10px 14px; border-bottom:1px solid var(--border); color:#c8c8d0; }
+    .prose tr:last-child td { border-bottom:none; }
+    .divider { border:none; border-top:1px solid var(--border); margin:48px 0; }
+    footer { padding:40px 0 60px; border-top:1px solid var(--border); color:var(--text-muted); font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+    footer a { color:var(--text-muted); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+    @media(max-width:540px){.article-header{padding:40px 0 32px;}nav{display:none;}}
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">drakenix</a>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">Writing</span>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">Multi-Tenant AI Agents</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="article-header">
+      <span class="article-tag">Agents</span>
+      <h1 class="article-title">Multi-Tenant AI Agents: Session Isolation Patterns</h1>
+      <p class="article-subtitle">How to build AI agent infrastructure where users never see each other's data — pluggable adapters, Redis session caching, PostgreSQL persistence, and role-based tool access in FastAPI.</p>
+      <div class="article-meta">
+        <span>Rich Long</span>
+        <span>·</span>
+        <span>September 2026</span>
+        <span>·</span>
+        <span>~13 min read</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <div class="toc-label">Contents</div>
+      <ol>
+        <li><a href="#problem">Why multi-tenancy is hard for AI agents</a></li>
+        <li><a href="#isolation">Session isolation: the core guarantee</a></li>
+        <li><a href="#storage">Redis + PostgreSQL: cache and persist</a></li>
+        <li><a href="#loop">The agent loop</a></li>
+        <li><a href="#adapters">Pluggable adapter architecture</a></li>
+        <li><a href="#tools">Role-based tool access</a></li>
+        <li><a href="#api">FastAPI wiring</a></li>
+        <li><a href="#lessons">What I'd do differently</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+
+      <h2 id="problem">Why multi-tenancy is hard for AI agents</h2>
+
+      <p>Multi-tenancy in a traditional web app is well-understood: put a <code>user_id</code> foreign key on your tables, filter every query by it, done. The blast radius of getting it wrong is a data leak — bad, but contained.</p>
+
+      <p>Multi-tenancy in an AI agent is harder because the contamination vector is the conversation context itself. An LLM's response is shaped by everything in its context window. If session A's history bleeds into session B's context — even a single message — the model will behave as if it knows things about user B that it learned from user A. That's not just a data leak. It's the model confidently hallucinating cross-user "knowledge" in ways that are subtle and hard to detect.</p>
+
+      <p>The other dimension: agents have persistent memory. A standard API endpoint is stateless — each request starts fresh. An agent accumulates context across turns. That state has to live somewhere, and wherever it lives, you need hard guarantees that one user's reads and writes can't touch another's.</p>
+
+      <p>Here's the architecture I use for production multi-tenant agents, built on FastAPI, Redis, and PostgreSQL.</p>
+
+      <h2 id="isolation">Session isolation: the core guarantee</h2>
+
+      <p>The isolation guarantee needs to be stated explicitly and enforced at the lowest level of the stack, not assumed to emerge from careful coding. Here's the contract:</p>
+
+      <p><strong>No method can access another user's session data without an explicit admin override, regardless of what parameters it receives.</strong></p>
+
+      <p>This isn't a guideline. It's an invariant enforced in the <code>SessionManager</code> — the single class through which all session access flows.</p>
+
+      <span class="code-label">app/agent/session.py</span>
+      <pre><code>from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
+
+@dataclass
+class AgentSession:
+    user_id: str
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
+    messages: list[dict] = field(default_factory=list)
+    memory: dict[str, Any] = field(default_factory=dict)
+    preferences: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+class SessionManager:
+    def __init__(self, cache: RedisCache, store: PostgresStore):
+        self._cache = cache
+        self._store = store
+
+    async def get(self, user_id: str) -> AgentSession:
+        """Get or create a session. Always scoped to user_id."""
+        # Check hot cache first
+        cached = await self._cache.get(f"session:{user_id}")
+        if cached:
+            return AgentSession(**cached)
+
+        # Fall through to persistent store
+        stored = await self._store.get_session(user_id)
+        if stored:
+            await self._cache.set(f"session:{user_id}", stored, ttl=3600)
+            return AgentSession(**stored)
+
+        # Brand new session
+        session = AgentSession(user_id=user_id)
+        await self._persist(session)
+        return session
+
+    async def update(self, session: AgentSession) -> None:
+        """Persist session. Enforces that user_id hasn't changed."""
+        session.updated_at = datetime.utcnow()
+        await self._cache.set(f"session:{session.user_id}", session.__dict__, ttl=3600)
+        await self._store.upsert_session(session)
+
+    async def delete(self, user_id: str) -> None:
+        await self._cache.delete(f"session:{user_id}")
+        await self._store.delete_session(user_id)
+
+    # Admin-only: explicitly scoped method, requires separate auth check
+    async def list_all(self, requester_is_admin: bool) -> list[str]:
+        if not requester_is_admin:
+            raise PermissionError("admin role required")
+        return await self._store.list_user_ids()</code></pre>
+
+      <p>The key design choices:</p>
+      <ul>
+        <li>The cache key is <code>session:{user_id}</code> — you can't retrieve a session without knowing the user_id, and user_id comes from the auth layer, not from the caller's request body.</li>
+        <li>Admin operations that cross user boundaries are explicit, separately named methods that require an admin flag — not a parameter on the normal <code>get()</code> method.</li>
+        <li>The <code>SessionManager</code> is the only path to session data. No other component queries the cache or store directly.</li>
+      </ul>
+
+      <h2 id="storage">Redis + PostgreSQL: cache and persist</h2>
+
+      <p>Sessions need two storage layers with different performance characteristics:</p>
+
+      <ul>
+        <li><strong>Redis</strong> — hot cache for active sessions. Sub-millisecond reads, TTL-based eviction, no disk I/O. This is where you go on every request during an active conversation.</li>
+        <li><strong>PostgreSQL</strong> — durable persistence. Survives Redis restarts, supports queries (find all sessions older than 24h, find sessions by user attribute), gives you an audit trail.</li>
+      </ul>
+
+      <span class="code-label">app/adapters/cache/redis.py</span>
+      <pre><code>import json
+import redis.asyncio as redis
+from app.config import settings
+
+class RedisCache:
+    def __init__(self):
+        self._client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+    async def get(self, key: str) -> dict | None:
+        raw = await self._client.get(key)
+        return json.loads(raw) if raw else None
+
+    async def set(self, key: str, value: dict, ttl: int = 3600) -> None:
+        await self._client.setex(key, ttl, json.dumps(value, default=str))
+
+    async def delete(self, key: str) -> None:
+        await self._client.delete(key)
+
+    async def extend_ttl(self, key: str, ttl: int = 3600) -> None:
+        """Call this on every session access to keep active sessions warm."""
+        await self._client.expire(key, ttl)</code></pre>
+
+      <span class="code-label">Database schema</span>
+      <pre><code>CREATE TABLE agent_sessions (
+    user_id      TEXT PRIMARY KEY,
+    messages     JSONB NOT NULL DEFAULT '[]',
+    memory       JSONB NOT NULL DEFAULT '{}',
+    preferences  JSONB NOT NULL DEFAULT '{}',
+    metadata     JSONB NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Index for admin cleanup queries (find stale sessions)
+CREATE INDEX idx_sessions_updated_at ON agent_sessions (updated_at);
+
+-- Trigger to auto-update updated_at
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sessions_updated_at
+    BEFORE UPDATE ON agent_sessions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();</code></pre>
+
+      <div class="callout">
+        <p><strong>On JSONB for messages:</strong> Storing the conversation history as a JSONB column is a pragmatic choice for an MVP. It means you can't efficiently query inside individual messages, but for session storage where you always load the whole history anyway, it's fine. When you need to search conversation history (full-text search, finding sessions that discussed a topic), add a separate <code>message_search</code> tsvector column and populate it with a trigger.</p>
+      </div>
+
+      <h2 id="loop">The agent loop</h2>
+
+      <p>The agent loop is the core execution model: receive a message, load session context, build the LLM prompt, call tools if needed, update session, return response. Every turn goes through this loop.</p>
+
+      <span class="code-label">app/agent/loop.py</span>
+      <pre><code>from app.agent.session import SessionManager, AgentSession
+from app.adapters.llm.base import LLMAdapter
+from app.tools.registry import ToolRegistry
+
+class AgentLoop:
+    def __init__(
+        self,
+        sessions: SessionManager,
+        llm: LLMAdapter,
+        tools: ToolRegistry,
+    ):
+        self._sessions = sessions
+        self._llm = llm
+        self._tools = tools
+
+    async def run(self, user_id: str, message: str) -> str:
+        # 1. Load this user's session — fully isolated
+        session = await self._sessions.get(user_id)
+
+        # 2. Append the new user message to history
+        session.messages.append({"role": "user", "content": message})
+
+        # 3. Build context: system prompt + conversation history + available tools
+        system = self._build_system_prompt(session)
+        available_tools = self._tools.get_tools_for_user(user_id)
+
+        # 4. Call LLM — may result in tool calls
+        response = await self._llm.complete(
+            system=system,
+            messages=session.messages,
+            tools=available_tools,
+        )
+
+        # 5. Execute tool calls if the model requested them
+        while response.tool_calls:
+            tool_results = []
+            for call in response.tool_calls:
+                result = await self._tools.execute(
+                    tool_name=call.name,
+                    params=call.params,
+                    user_id=user_id,    # tools receive user_id for their own auth checks
+                )
+                tool_results.append({"tool": call.name, "result": result})
+
+            # Feed results back to the model
+            session.messages.append({"role": "assistant", "tool_calls": response.tool_calls})
+            session.messages.append({"role": "tool", "content": tool_results})
+            response = await self._llm.complete(
+                system=system,
+                messages=session.messages,
+                tools=available_tools,
+            )
+
+        # 6. Append final response to history
+        final_text = response.content
+        session.messages.append({"role": "assistant", "content": final_text})
+
+        # 7. Trim history to avoid context window overflow
+        session.messages = self._trim_history(session.messages, max_turns=20)
+
+        # 8. Persist updated session
+        await self._sessions.update(session)
+
+        return final_text
+
+    def _build_system_prompt(self, session: AgentSession) -> str:
+        base = "You are an AI assistant. Be helpful and accurate."
+        if session.preferences.get("name"):
+            base += f" The user's name is {session.preferences['name']}."
+        if session.memory:
+            base += f"\n\nUser context:\n{self._format_memory(session.memory)}"
+        return base
+
+    def _trim_history(self, messages: list[dict], max_turns: int) -> list[dict]:
+        """Keep the last N turn pairs. Always preserve the system message."""
+        # Each turn = 1 user + 1 assistant message
+        max_messages = max_turns * 2
+        if len(messages) > max_messages:
+            return messages[-max_messages:]
+        return messages</code></pre>
+
+      <div class="callout orange">
+        <p><strong>On history trimming:</strong> Unlimited conversation history will eventually overflow the context window. Trim by turn count rather than token count for simplicity — but if you care about token costs, implement actual token counting (tiktoken for OpenAI-compatible models) and trim to a token budget instead. The right cutoff depends on your model's context window and how much history actually matters for your use case.</p>
+      </div>
+
+      <h2 id="adapters">Pluggable adapter architecture</h2>
+
+      <p>The adapter pattern is what makes this deployable to both development and production without code changes. Every external dependency — LLM, memory, auth, storage, messaging — has an abstract base class and at least two concrete implementations: local (for development, no external services required) and cloud (for production).</p>
+
+      <span class="code-label">app/adapters/llm/base.py</span>
+      <pre><code>from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+@dataclass
+class LLMResponse:
+    content: str
+    tool_calls: list[dict] | None = None
+    usage: dict | None = None
+
+class LLMAdapter(ABC):
+    @abstractmethod
+    async def complete(
+        self,
+        system: str,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> LLMResponse:
+        ...</code></pre>
+
+      <span class="code-label">app/adapters/llm/anthropic.py</span>
+      <pre><code>import anthropic
+from app.adapters.llm.base import LLMAdapter, LLMResponse
+from app.config import settings
+
+class AnthropicAdapter(LLMAdapter):
+    def __init__(self):
+        self._client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+    async def complete(self, system, messages, tools=None) -> LLMResponse:
+        kwargs = dict(
+            model=settings.LLM_MODEL,
+            max_tokens=1024,
+            system=system,
+            messages=messages,
+        )
+        if tools:
+            kwargs["tools"] = tools
+
+        response = await self._client.messages.create(**kwargs)
+
+        tool_calls = None
+        if response.stop_reason == "tool_use":
+            tool_calls = [
+                {"name": b.name, "params": b.input, "id": b.id}
+                for b in response.content
+                if b.type == "tool_use"
+            ]
+
+        text = next((b.text for b in response.content if hasattr(b, "text")), "")
+        return LLMResponse(content=text, tool_calls=tool_calls)</code></pre>
+
+      <span class="code-label">app/adapters/llm/azure_openai.py</span>
+      <pre><code>from openai import AsyncAzureOpenAI
+from app.adapters.llm.base import LLMAdapter, LLMResponse
+from app.config import settings
+
+class AzureOpenAIAdapter(LLMAdapter):
+    def __init__(self):
+        self._client = AsyncAzureOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            api_key=settings.AZURE_OPENAI_API_KEY,
+            api_version="2024-02-01",
+        )
+
+    async def complete(self, system, messages, tools=None) -> LLMResponse:
+        all_messages = [{"role": "system", "content": system}] + messages
+        kwargs = dict(model=settings.AZURE_OPENAI_DEPLOYMENT, messages=all_messages)
+        if tools:
+            kwargs["tools"] = tools
+
+        response = await self._client.chat.completions.create(**kwargs)
+        choice = response.choices[0]
+
+        tool_calls = None
+        if choice.finish_reason == "tool_calls":
+            tool_calls = [
+                {"name": tc.function.name, "params": tc.function.arguments, "id": tc.id}
+                for tc in choice.message.tool_calls
+            ]
+
+        return LLMResponse(content=choice.message.content or "", tool_calls=tool_calls)</code></pre>
+
+      <p>Switching the LLM backend is one environment variable: <code>ADAPTER_LLM=anthropic</code> or <code>ADAPTER_LLM=azure_openai</code>. The factory reads it at startup:</p>
+
+      <span class="code-label">app/adapters/factory.py</span>
+      <pre><code>from app.config import settings
+
+def build_llm() -> LLMAdapter:
+    match settings.ADAPTER_LLM:
+        case "anthropic":
+            from app.adapters.llm.anthropic import AnthropicAdapter
+            return AnthropicAdapter()
+        case "azure_openai":
+            from app.adapters.llm.azure_openai import AzureOpenAIAdapter
+            return AzureOpenAIAdapter()
+        case _:
+            raise ValueError(f"Unknown LLM adapter: {settings.ADAPTER_LLM}")
+
+def build_auth() -> AuthAdapter:
+    match settings.ADAPTER_AUTH:
+        case "local":
+            from app.adapters.auth.local import LocalAuthAdapter
+            return LocalAuthAdapter()
+        case "entra":
+            from app.adapters.auth.entra import EntraAuthAdapter
+            return EntraAuthAdapter()
+        case _:
+            raise ValueError(f"Unknown auth adapter: {settings.ADAPTER_AUTH}")</code></pre>
+
+      <h2 id="tools">Role-based tool access</h2>
+
+      <p>Tools are the surface where agents affect the world. Role-based access control here is not optional — you need hard enforcement that a regular user can't trigger admin-only tools, regardless of what the LLM decides to call.</p>
+
+      <span class="code-label">app/tools/registry.py</span>
+      <pre><code>from dataclasses import dataclass
+from typing import Callable, Any
+
+@dataclass
+class Tool:
+    name: str
+    description: str
+    parameters: dict          # JSON Schema
+    handler: Callable
+    roles: list[str]          # Which roles can use this tool
+    schema: dict | None = None  # Cached MCP/function-call schema
+
+class ToolRegistry:
+    def __init__(self):
+        self._tools: dict[str, Tool] = {}
+        self._user_roles: dict[str, list[str]] = {}   # user_id → roles
+
+    def register(self, tool: Tool) -> None:
+        self._tools[tool.name] = tool
+
+    def set_user_roles(self, user_id: str, roles: list[str]) -> None:
+        self._user_roles[user_id] = roles
+
+    def get_tools_for_user(self, user_id: str) -> list[dict]:
+        """Return tool schemas the LLM can call for this user."""
+        roles = self._user_roles.get(user_id, ["user"])
+        return [
+            self._to_schema(t)
+            for t in self._tools.values()
+            if any(role in t.roles for role in roles)
+        ]
+
+    async def execute(self, tool_name: str, params: dict, user_id: str) -> Any:
+        tool = self._tools.get(tool_name)
+        if not tool:
+            raise ValueError(f"Unknown tool: {tool_name}")
+
+        # Enforce role check at execution time — not just at schema time
+        roles = self._user_roles.get(user_id, ["user"])
+        if not any(role in tool.roles for role in roles):
+            raise PermissionError(
+                f"User {user_id} lacks required role for tool '{tool_name}'"
+            )
+
+        return await tool.handler(params, user_id=user_id)
+
+    def _to_schema(self, tool: Tool) -> dict:
+        return {
+            "name": tool.name,
+            "description": tool.description,
+            "input_schema": tool.parameters,
+        }</code></pre>
+
+      <p>Registering tools:</p>
+
+      <span class="code-label">app/tools/builtin/web_search.py</span>
+      <pre><code>from app.tools.registry import Tool, ToolRegistry
+
+async def web_search_handler(params: dict, user_id: str) -> dict:
+    query = params["query"]
+    # DuckDuckGo or configured search provider
+    results = await search(query, max_results=5)
+    return {"results": [{"title": r.title, "url": r.url, "snippet": r.snippet} for r in results]}
+
+WEB_SEARCH_TOOL = Tool(
+    name="web_search",
+    description="Search the web for current information. Use for recent events, facts, or anything that may have changed since the model's training cutoff.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"}
+        },
+        "required": ["query"],
+    },
+    handler=web_search_handler,
+    roles=["user", "admin"],     # available to all roles
+)
+
+async def shell_handler(params: dict, user_id: str) -> dict:
+    # Admin-only: actually executes shell commands
+    import asyncio
+    proc = await asyncio.create_subprocess_shell(
+        params["command"],
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    return {"stdout": stdout.decode(), "stderr": stderr.decode(), "returncode": proc.returncode}
+
+SHELL_TOOL = Tool(
+    name="shell",
+    description="Execute a shell command on the server. Admin only.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "command": {"type": "string", "description": "Shell command to run"}
+        },
+        "required": ["command"],
+    },
+    handler=shell_handler,
+    roles=["admin"],    # admin only — never shown to regular users
+)</code></pre>
+
+      <div class="callout orange">
+        <p><strong>Enforce at execution, not just at schema time.</strong> The schema returned to the LLM controls what tools it <em>sees</em>. But a malicious or confused prompt could theoretically cause the model to attempt to call a tool it wasn't shown. Enforce the role check again in <code>execute()</code> — the double-check is cheap and the consequences of skipping it are not.</p>
+      </div>
+
+      <h2 id="api">FastAPI wiring</h2>
+
+      <p>The API layer is where auth meets sessions. The auth adapter validates the token and returns a <code>user_id</code>; that <code>user_id</code> is the key for everything downstream.</p>
+
+      <span class="code-label">app/api/routes.py</span>
+      <pre><code>from fastapi import FastAPI, Depends, HTTPException, Header
+from pydantic import BaseModel
+from app.agent.loop import AgentLoop
+from app.adapters.factory import build_auth, build_llm, build_sessions
+from app.tools.registry import ToolRegistry
+
+app = FastAPI(title="Enterprise AI Agent")
+
+# Build adapters once at startup
+auth = build_auth()
+sessions = build_sessions()
+llm = build_llm()
+tools = ToolRegistry()
+# ... register tools ...
+agent = AgentLoop(sessions=sessions, llm=llm, tools=tools)
+
+async def get_current_user(authorization: str = Header(...)) -> str:
+    """Extract and validate user_id from the Authorization header."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    token = authorization.removeprefix("Bearer ")
+    user_id = await auth.validate_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return user_id
+
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str  # == user_id; returned for client-side reference
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(
+    request: ChatRequest,
+    user_id: str = Depends(get_current_user),
+):
+    # user_id from auth — caller cannot override this
+    response_text = await agent.run(user_id=user_id, message=request.message)
+    return ChatResponse(response=response_text, session_id=user_id)
+
+@app.get("/session")
+async def get_session(user_id: str = Depends(get_current_user)):
+    session = await sessions.get(user_id)
+    return {
+        "user_id": user_id,
+        "message_count": len(session.messages),
+        "created_at": session.created_at,
+        "updated_at": session.updated_at,
+    }
+
+@app.delete("/session")
+async def delete_session(user_id: str = Depends(get_current_user)):
+    await sessions.delete(user_id)
+    return {"status": "deleted"}
+
+# Admin endpoints — additional role check inside
+@app.post("/admin/cleanup")
+async def cleanup_stale_sessions(
+    max_age_hours: int = 24,
+    user_id: str = Depends(get_current_user),
+):
+    if not await auth.is_admin(user_id):
+        raise HTTPException(status_code=403, detail="Admin role required")
+    deleted = await sessions.cleanup_older_than(max_age_hours)
+    return {"deleted_sessions": deleted}</code></pre>
+
+      <h2 id="lessons">What I'd do differently</h2>
+
+      <p><strong>Use a proper message queue for long agent runs.</strong> The current architecture is synchronous: the HTTP request waits until the agent finishes. For quick Q&A that's fine. For agent runs that call multiple tools and take 15-30 seconds, you want an async job queue (Celery, ARQ, or even just a background task with asyncio) so the client can poll for results rather than holding an open connection. SSE or WebSocket for streaming responses is the user-experience upgrade after that.</p>
+
+      <p><strong>Rate-limit per user, not per IP.</strong> A shared AI agent endpoint is expensive. Users who send thousands of messages will blow your API budget fast. Implement per-user rate limiting in Redis (<code>INCR user:{user_id}:requests:minute</code> with a TTL) and return 429 when they exceed the limit. Fair use policy enforced in code beats it in a terms-of-service document.</p>
+
+      <p><strong>Instrument the agent loop, not just the API endpoints.</strong> Standard APM tools trace HTTP requests well. They don't trace what happens inside an agent turn — which tools were called, how long LLM inference took, what the token counts were, whether the model triggered a tool call at all. Add structured logging in the agent loop and push it to your observability stack. You need this to debug hallucinations and unexpected tool usage patterns.</p>
+
+      <p><strong>Make the adapter factory injectable, not a module-level singleton.</strong> Building adapters once at module import time makes testing awkward — you need real Redis and Postgres running to import the module. Use FastAPI's dependency injection instead: adapters are created per-request (or cached at app startup via <code>@app.on_event("startup")</code>) and injected into route handlers. The test suite can swap in mock adapters without touching environment variables.</p>
+
+      <hr class="divider">
+
+      <p>The Enterprise Agent source is private, but the full architecture here is enough to build from. If you're building something similar and want to compare notes, <a href="mailto:r.david.long@gmail.com">email me</a> or find me on <a href="https://www.linkedin.com/in/rich-long-mba/">LinkedIn</a>.</p>
+
+      <p>That wraps the series. If there's a topic you'd like to see covered — fine-tuning for industrial data, evaluation frameworks for production RAG, or MuleSoft integration patterns for AI workloads — let me know.</p>
+
+    </article>
+
+    <footer>
+      <a href="/">&larr; drakenix.com</a>
+      <a href="/writing/">More writing</a>
+    </footer>
+  </div>
+</body>
+</html>
