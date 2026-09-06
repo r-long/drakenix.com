@@ -1,0 +1,74 @@
+name: Update Projects
+
+on:
+  # Run every Sunday at 2 AM UTC
+  schedule:
+    - cron: "0 2 * * 0"
+
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (check without committing)"
+        required: false
+        default: "false"
+        type: boolean
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push the commit back
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run update script
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python scripts/update_projects.py --dry-run
+          else
+            python scripts/update_projects.py
+          fi
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat
+          fi
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true' && inputs.dry_run != 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/projects.json index.html
+          git commit -m "chore: auto-update project metadata [$(date -u +%Y-%m-%d)]"
+          git push
+
+      - name: Report new repos (if any)
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          python - <<'EOF'
+          import json, sys
+          data = json.load(open("data/projects.json"))
+          new_repos = data.get("meta", {}).get("new_repos_detected", [])
+          if new_repos:
+              print("::warning::New repos not yet in portfolio: " + ", ".join(new_repos))
+          else:
+              print("No new repos detected.")
+          EOF
