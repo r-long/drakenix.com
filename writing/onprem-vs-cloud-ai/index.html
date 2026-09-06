@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>On-Premises vs. Cloud AI for Manufacturing | Rich Long</title>
+  <meta name="description" content="Why SMB manufacturers can't just call the OpenAI API, what data sovereignty means on the shop floor, hybrid inference routing, and how to architect AI systems that work with no internet connection.">
+  <meta name="author" content="Rich Long">
+  <meta name="keywords" content="on-premises AI, edge AI, manufacturing AI, Ollama, local LLM, data sovereignty, hybrid inference, industrial AI, private AI, Harmony Core">
+
+  <link rel="canonical" href="https://drakenix.com/writing/onprem-vs-cloud-ai/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://drakenix.com/writing/onprem-vs-cloud-ai/">
+  <meta property="og:title" content="On-Premises vs. Cloud AI for Manufacturing">
+  <meta property="og:description" content="Why SMB manufacturers can't just call the OpenAI API, what data sovereignty means on the shop floor, and how to build AI that works with no internet connection.">
+  <meta property="og:site_name" content="Drakenix">
+  <meta property="article:author" content="Rich Long">
+  <meta property="article:published_time" content="2026-09-21">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="On-Premises vs. Cloud AI for Manufacturing">
+  <meta name="twitter:description" content="Why SMB manufacturers can't just call the OpenAI API — and how to architect AI that works on the shop floor.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "On-Premises vs. Cloud AI for Manufacturing",
+    "description": "Why SMB manufacturers can't just call the OpenAI API, what data sovereignty means on the shop floor, hybrid inference routing, and how to architect AI systems that work with no internet connection.",
+    "author": { "@type": "Person", "name": "Rich Long", "url": "https://drakenix.com" },
+    "publisher": { "@type": "Organization", "name": "Drakenix", "url": "https://drakenix.com" },
+    "datePublished": "2026-09-21",
+    "url": "https://drakenix.com/writing/onprem-vs-cloud-ai/",
+    "keywords": ["on-premises AI", "edge AI", "manufacturing AI", "Ollama", "local LLM", "data sovereignty", "industrial AI"]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
+      --text: #e2e2e8; --text-muted: #7a7a8c;
+      --accent: #c084fc; --accent-dim: rgba(192,132,252,0.12);
+      --orange: #fb923c; --orange-dim: rgba(251,146,60,0.12);
+      --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+      --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+    }
+    body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
+    nav { position:sticky; top:0; z-index:10; background:rgba(10,10,15,0.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:14px 0; }
+    .nav-inner { max-width:760px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:16px; }
+    .nav-logo { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; color:var(--accent); letter-spacing:2px; text-transform:uppercase; text-decoration:none; }
+    .nav-sep { color:var(--border); }
+    .nav-crumb { font-size:13px; color:var(--text-muted); }
+    .container { max-width:720px; margin:0 auto; padding:0 24px; }
+    .article-header { padding:64px 0 48px; border-bottom:1px solid var(--border); margin-bottom:48px; }
+    .article-tag { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:var(--orange); background:var(--orange-dim); padding:4px 10px; border-radius:4px; text-transform:uppercase; letter-spacing:1px; display:inline-block; margin-bottom:20px; }
+    .article-title { font-size:clamp(1.8rem,4vw,2.6rem); font-weight:700; line-height:1.2; letter-spacing:-0.02em; margin-bottom:20px; }
+    .article-subtitle { font-size:1.1rem; color:var(--text-muted); line-height:1.7; max-width:600px; margin-bottom:28px; }
+    .article-meta { display:flex; align-items:center; gap:16px; font-size:13px; color:var(--text-muted); flex-wrap:wrap; }
+    .toc { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:48px; }
+    .toc-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; }
+    .toc ol { padding-left:20px; display:flex; flex-direction:column; gap:6px; }
+    .toc a { font-size:14px; color:var(--text-muted); text-decoration:none; transition:color 0.2s; }
+    .toc a:hover { color:var(--accent); }
+    .prose { margin-bottom:80px; }
+    .prose h2 { font-size:1.5rem; font-weight:700; letter-spacing:-0.01em; margin:56px 0 20px; padding-top:8px; }
+    .prose h3 { font-size:1.1rem; font-weight:600; margin:36px 0 14px; color:var(--text); }
+    .prose p { font-size:15.5px; line-height:1.85; color:#c8c8d0; margin-bottom:20px; }
+    .prose strong { color:var(--text); font-weight:600; }
+    .prose a { color:var(--accent); text-decoration:none; border-bottom:1px solid rgba(192,132,252,0.3); }
+    .prose a:hover { border-bottom-color:var(--accent); }
+    .prose ul, .prose ol { padding-left:24px; margin-bottom:20px; display:flex; flex-direction:column; gap:8px; }
+    .prose li { font-size:15.5px; line-height:1.75; color:#c8c8d0; }
+    .prose pre { background:#0d0d14; border:1px solid var(--border); border-radius:10px; padding:20px; overflow-x:auto; margin:24px 0; }
+    .code-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:block; }
+    .prose pre code { font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; color:#d4d4d8; }
+    .prose code:not(pre code) { font-family:'JetBrains Mono',monospace; font-size:13px; background:rgba(192,132,252,0.08); color:var(--accent); padding:2px 6px; border-radius:4px; }
+    .callout { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:16px 20px; margin:28px 0; }
+    .callout.orange { border-left-color:var(--orange); }
+    .callout.green { border-left-color:var(--green); }
+    .callout.blue { border-left-color:var(--blue); }
+    .callout p { font-size:14px; color:var(--text-muted); margin-bottom:0; }
+    .prose table { width:100%; border-collapse:collapse; font-size:14px; margin:24px 0; }
+    .prose th { text-align:left; padding:10px 14px; background:var(--surface); color:var(--text-muted); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+    .prose td { padding:10px 14px; border-bottom:1px solid var(--border); color:#c8c8d0; }
+    .prose tr:last-child td { border-bottom:none; }
+    .divider { border:none; border-top:1px solid var(--border); margin:48px 0; }
+    footer { padding:40px 0 60px; border-top:1px solid var(--border); color:var(--text-muted); font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+    footer a { color:var(--text-muted); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+    @media(max-width:540px){.article-header{padding:40px 0 32px;}nav{display:none;}}
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">drakenix</a>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">Writing</span>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">On-Prem vs Cloud AI</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="article-header">
+      <span class="article-tag">Architecture</span>
+      <h1 class="article-title">On-Premises vs. Cloud AI for Manufacturing</h1>
+      <p class="article-subtitle">Why SMB manufacturers can't just call the OpenAI API, what data sovereignty means on the shop floor, and how to architect AI systems that work — including with no internet connection.</p>
+      <div class="article-meta">
+        <span>Rich Long</span>
+        <span>·</span>
+        <span>September 2026</span>
+        <span>·</span>
+        <span>~12 min read</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <div class="toc-label">Contents</div>
+      <ol>
+        <li><a href="#reality">The shop floor reality</a></li>
+        <li><a href="#sovereignty">What data sovereignty actually means here</a></li>
+        <li><a href="#latency">The latency argument</a></li>
+        <li><a href="#local-stack">Building a fully local AI stack</a></li>
+        <li><a href="#hybrid">Hybrid inference routing</a></li>
+        <li><a href="#when-cloud">When cloud AI is the right call</a></li>
+        <li><a href="#hardware">Practical hardware</a></li>
+        <li><a href="#lessons">What I'd do differently</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+
+      <h2 id="reality">The shop floor reality</h2>
+
+      <p>Every AI demo I've ever seen runs on a MacBook Pro with a strong WiFi connection in a conference room. The real deployment target for manufacturing AI is a lot less comfortable: a control room adjacent to a CNC floor, a dusty cabinet next to a conveyor line, or a server rack in a facility with spotty connectivity in a rural industrial park.</p>
+
+      <p>The assumption baked into most AI tooling — that you have reliable broadband, that sending data to a third-party API is fine, that your customer can just sign up for an OpenAI account — falls apart in practice. Here's what you actually encounter:</p>
+
+      <ul>
+        <li><strong>Connectivity gaps.</strong> Many manufacturing facilities, especially in rural areas, have unreliable or limited internet. A system that goes down when the WAN link drops is not a system a plant manager will trust.</li>
+        <li><strong>IT security constraints.</strong> Enterprise manufacturers have network segmentation — the OT (operational technology) network running SCADA and PLCs is often air-gapped or severely restricted from the internet. Your AI system may never be allowed to touch an external API.</li>
+        <li><strong>Proprietary process data.</strong> A manufacturer's SOPs, process parameters, quality specs, and machine configurations are competitive IP. Sending them through a shared API endpoint is a non-starter for many customers, regardless of the provider's privacy policies.</li>
+        <li><strong>Procurement friction.</strong> "Just sign up for an API key" is not how enterprise procurement works. Some manufacturers have policies against any new SaaS vendor without a full security review. On-premises removes the vendor entirely.</li>
+      </ul>
+
+      <p>None of this means cloud AI is wrong for manufacturing. It means you need to design for both deployment modes from day one, not bolt on an on-prem option as an afterthought.</p>
+
+      <h2 id="sovereignty">What data sovereignty actually means here</h2>
+
+      <p>Data sovereignty in manufacturing isn't abstract. Here are the concrete things your customers are worried about:</p>
+
+      <p><strong>Process recipes.</strong> A food manufacturer's seasoning ratios or a chemical processor's reaction parameters are trade secrets. They may have been developed over decades. The idea that this data leaves the facility and gets processed on shared infrastructure — even infrastructure with strong privacy guarantees — is genuinely alarming to the people responsible for protecting it.</p>
+
+      <p><strong>Quality data.</strong> Defect rates, rejection patterns, process capability indices — this is information competitors would pay to have. It also contains signals about what a manufacturer is making, how much of it, and for whom.</p>
+
+      <p><strong>Maintenance history.</strong> Equipment maintenance records reveal what machines you have, how hard you run them, and when they're likely to fail. For a contract manufacturer, this is operational intelligence they don't want outside the building.</p>
+
+      <p>The legal and regulatory angle is real too: ITAR-controlled manufacturers (defense supply chain) often face hard restrictions on where controlled technical data can be processed. CMMC compliance for DoD contractors has specific requirements about data residency.</p>
+
+      <p>The practical implication: your AI architecture needs a clear answer to "where does the data go?" before you get to the pilot stage with enterprise customers. "To OpenAI" is often not an acceptable answer.</p>
+
+      <h2 id="latency">The latency argument</h2>
+
+      <p>There's a second reason to care about local inference beyond data sovereignty: latency on control-adjacent workloads.</p>
+
+      <p>An API call to a cloud LLM takes 500ms to 5 seconds under normal conditions. For a document Q&A interface where a maintenance tech is looking something up, that's fine. For an anomaly detection system that needs to assess a sensor reading and decide whether to trigger an alert before the next PLC scan cycle, it's not.</p>
+
+      <p>The PLC scan cycle in most manufacturing automation is 10-100ms. You're not going to run LLM inference in that loop — that's still deterministic control logic. But the layer above it — the AI advisor that interprets what the anomaly means and recommends action — needs to respond in seconds, not tens of seconds. Cloud API latency plus network overhead adds up.</p>
+
+      <p>Local inference on a decent GPU gives you 2-8 tokens/second on a 7B model, 1-3 tokens/second on a 14B model. For a 150-token explanation, that's under 10 seconds on a 7B model running on an RTX 4090. Acceptable for an advisory layer. Infeasible over a WAN link with a loaded API.</p>
+
+      <h2 id="local-stack">Building a fully local AI stack</h2>
+
+      <p>Harmony Core is my on-premises AI agent stack for manufacturing. The design constraint: nothing leaves the building. Local auth, local inference, local embeddings, local storage. All via Docker Compose so it deploys on any Linux box without an internet connection after initial setup.</p>
+
+      <p>Here's what the full local stack looks like:</p>
+
+      <span class="code-label">docker-compose.yml — fully local AI stack</span>
+      <pre><code>services:
+  # PostgreSQL + pgvector for all storage
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: harmony
+      POSTGRES_USER: harmony
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Local LLM inference — no API keys, no internet
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # Self-hosted embeddings
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    command: --model-id BAAI/bge-base-en-v1.5
+    volumes:
+      - embedding_models:/data
+    restart: unless-stopped
+
+  # API server
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql://harmony:${DB_PASSWORD}@postgres:5432/harmony
+      LLM_BASE_URL: http://ollama:11434/v1   # OpenAI-compatible endpoint
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:14b}
+      EMBEDDING_URL: http://embeddings:80
+    depends_on: [postgres, ollama, embeddings]
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  # Next.js web UI
+  web:
+    build: ./apps/web
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:4000
+    ports:
+      - "3000:3000"
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  ollama_models:
+  embedding_models:</code></pre>
+
+      <p>The critical detail is <code>LLM_BASE_URL: http://ollama:11434/v1</code>. Ollama exposes an OpenAI-compatible API endpoint. That means the application code that makes LLM calls doesn't know whether it's talking to Ollama running locally or the real OpenAI API — the interface is identical. Switching between on-prem and cloud is a configuration change, not a code change.</p>
+
+      <span class="code-label">apps/api/src/inference/client.ts</span>
+      <pre><code>import OpenAI from "openai";  // Works with any OpenAI-compatible endpoint
+
+const llm = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL,    // http://ollama:11434/v1 locally
+  apiKey: process.env.LLM_API_KEY ?? "ollama",  // Ollama ignores this
+});
+
+export async function complete(
+  system: string,
+  user: string,
+  opts: { model?: string; maxTokens?: number } = {}
+): Promise<string> {
+  const response = await llm.chat.completions.create({
+    model: opts.model ?? process.env.LLM_MODEL ?? "qwen2.5:14b",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    max_tokens: opts.maxTokens ?? 512,
+  });
+  return response.choices[0].message.content ?? "";
+}</code></pre>
+
+      <p>Same function whether it's running against Ollama locally or Azure OpenAI in the cloud. The model name changes; nothing else does.</p>
+
+      <h2 id="hybrid">Hybrid inference routing</h2>
+
+      <p>The interesting architectural case isn't pure on-prem or pure cloud — it's the hybrid, where you route different workloads to different inference backends based on their characteristics.</p>
+
+      <p>The routing logic is straightforward:</p>
+
+      <table>
+        <thead>
+          <tr><th>Workload</th><th>Route to</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Anomaly explanation (real-time)</td><td>Local Ollama</td><td>Low latency, no data egress, runs in seconds</td></tr>
+          <tr><td>Document Q&amp;A (operator query)</td><td>Local Ollama</td><td>Data stays on-prem, acceptable latency</td></tr>
+          <tr><td>Complex multi-step reasoning</td><td>Cloud (Claude, GPT-4)</td><td>Better capability for nuanced analysis</td></tr>
+          <tr><td>Embeddings</td><td>Local TEI</td><td>Run once at indexing time, cost and privacy</td></tr>
+          <tr><td>Report generation (batch)</td><td>Cloud</td><td>Quality matters, latency doesn't</td></tr>
+          <tr><td>Safety-critical procedures</td><td>Local only</td><td>Data never leaves regardless of query type</td></tr>
+        </tbody>
+      </table>
+
+      <span class="code-label">apps/api/src/inference/router.ts</span>
+      <pre><code>type WorkloadKind =
+  | "anomaly_explanation"
+  | "document_qa"
+  | "complex_reasoning"
+  | "report_generation"
+  | "safety_procedure";
+
+interface InferenceConfig {
+  baseURL: string;
+  apiKey: string;
+  model: string;
+}
+
+const LOCAL: InferenceConfig = {
+  baseURL: process.env.LLM_BASE_URL_LOCAL ?? "http://ollama:11434/v1",
+  apiKey: "ollama",
+  model: process.env.LLM_MODEL_LOCAL ?? "qwen2.5:14b",
+};
+
+const CLOUD: InferenceConfig = {
+  baseURL: "https://api.anthropic.com/v1",
+  apiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  model: "claude-sonnet-4-5",
+};
+
+// Workloads that must never leave the facility
+const ALWAYS_LOCAL = new Set<WorkloadKind>([
+  "anomaly_explanation",
+  "document_qa",
+  "safety_procedure",
+]);
+
+export function routeInference(kind: WorkloadKind): InferenceConfig {
+  // Respect explicit on-prem-only mode (e.g., air-gapped facility)
+  if (process.env.INFERENCE_MODE === "local_only") {
+    return LOCAL;
+  }
+
+  // Some workloads are always local regardless of mode
+  if (ALWAYS_LOCAL.has(kind)) {
+    return LOCAL;
+  }
+
+  // Cloud available and workload is cloud-eligible
+  if (process.env.ANTHROPIC_API_KEY && process.env.INFERENCE_MODE !== "local_only") {
+    return CLOUD;
+  }
+
+  // Fallback to local if cloud isn't configured
+  return LOCAL;
+}</code></pre>
+
+      <p>The <code>INFERENCE_MODE=local_only</code> environment variable is a single switch that makes the entire system air-gap safe. Set it in the deployment config for facilities with network restrictions; leave it unset for facilities where cloud calls are acceptable for non-sensitive workloads.</p>
+
+      <div class="callout">
+        <p><strong>Always have a local fallback.</strong> Even for workloads you plan to route to the cloud, implement a local fallback. Cloud APIs go down. Network links drop. A system that stops working because OpenAI is having an incident is not production-grade for manufacturing.</p>
+      </div>
+
+      <h2 id="when-cloud">When cloud AI is the right call</h2>
+
+      <p>I've spent most of this article on the case for on-prem. To be fair: cloud AI is the right answer for a lot of manufacturing use cases.</p>
+
+      <p><strong>Use cloud AI when:</strong></p>
+      <ul>
+        <li>The data involved isn't sensitive — scheduling optimization, general engineering Q&A, non-proprietary document summarization</li>
+        <li>You need frontier model capability — complex multi-step reasoning, code generation, sophisticated analysis that a 14B local model genuinely can't match</li>
+        <li>The customer is a smaller shop without IT infrastructure to maintain a local AI stack</li>
+        <li>You're in a demo or pilot phase and need to move fast before validating that on-prem is worth the complexity</li>
+        <li>The workload is batch and async — nightly report generation, weekly trend analysis — where API latency doesn't matter</li>
+      </ul>
+
+      <p><strong>The hybrid answer for most customers:</strong> Use cloud for the heavy reasoning tasks where quality matters and data sensitivity is low. Use local for real-time, data-sensitive, and latency-critical workloads. Design the routing layer so customers can tune the balance based on their specific constraints.</p>
+
+      <h2 id="hardware">Practical hardware</h2>
+
+      <p>If you're recommending hardware for an on-premises deployment, here's what actually works in a manufacturing context:</p>
+
+      <table>
+        <thead>
+          <tr><th>Tier</th><th>Hardware</th><th>Model capability</th><th>Cost</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Entry</td>
+            <td>Mini PC with RTX 4060 (8GB VRAM)</td>
+            <td>7B models comfortably, some 14B with quantization</td>
+            <td>~$800</td>
+          </tr>
+          <tr>
+            <td>Mid</td>
+            <td>Workstation with RTX 4090 (24GB VRAM)</td>
+            <td>14B–34B models, fast inference</td>
+            <td>~$3,000</td>
+          </tr>
+          <tr>
+            <td>Full</td>
+            <td>Server with dual A6000 (96GB total VRAM)</td>
+            <td>70B models, multiple concurrent users</td>
+            <td>~$12,000</td>
+          </tr>
+          <tr>
+            <td>CPU-only</td>
+            <td>Any modern server, 64GB+ RAM</td>
+            <td>7B models with llama.cpp, ~2-4 tokens/sec</td>
+            <td>~$1,500</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>For most SMB manufacturing deployments, the entry or mid tier is right. A 14B model running on an RTX 4090 is remarkably capable for document Q&A and anomaly explanation — the delta from a frontier cloud model is smaller than you'd expect for domain-specific industrial use cases where you control the prompts and context.</p>
+
+      <p>The CPU-only option is worth calling out: 2-4 tokens/second sounds slow, but for a use case where the operator submits a query and waits 30-60 seconds for a detailed answer, it's often acceptable. And it means you can run on existing server hardware with no GPU procurement at all.</p>
+
+      <div class="callout blue">
+        <p><strong>On model selection:</strong> For manufacturing workloads I've had the best results with Qwen 2.5 (7B and 14B) for on-prem — strong instruction following, good reasoning, well-quantized. Mistral 7B is a solid fallback. For embedding models, BAAI/bge-base-en-v1.5 remains the default choice; bge-m3 if you need multilingual support for non-English facilities.</p>
+      </div>
+
+      <p>One more hardware consideration: <strong>industrial environment durability</strong>. A consumer GPU in a rack near a CNC floor is going to encounter vibration, temperature swings, and metal dust. Use server-grade hardware with proper airflow and dust filtration. The RTX 4090 is a gaming card — it's not rated for industrial environments. If the system is going on the shop floor rather than in a climate-controlled server room, use industrial edge compute (Advantech, OnLogic) with appropriate enclosures.</p>
+
+      <h2 id="lessons">What I'd do differently</h2>
+
+      <p><strong>Design for offline-first from day one.</strong> I retrofitted offline capability into Harmony Core partway through development. It's much harder to add than to design in from the start. If your system uses any service that requires network access — even for licensing or telemetry — document it explicitly and have a plan for how the system behaves when that service is unavailable.</p>
+
+      <p><strong>Build a model management layer early.</strong> Ollama makes it easy to pull and run models, but in a production facility you need controlled model versions — not "whatever the latest pull gives you." Build a manifest that specifies exact model versions (including quantization), automates pulling them on deployment, and validates model hashes before use. You want model updates to be a deliberate change, not an accidental drift.</p>
+
+      <p><strong>Test on real hardware before the customer pilot.</strong> The performance difference between an M2 MacBook Pro running Ollama in development and an RTX 4060 in a mini PC running the same model is significant and non-obvious. A 7B model that feels fast on dev hardware may feel unacceptably slow on the deployment target. Test on something close to production hardware before you make promises about response times.</p>
+
+      <p><strong>Quantize aggressively, benchmark honestly.</strong> A Q4_K_M quantized 14B model running on 12GB VRAM delivers maybe 85% of the capability of the full-precision version at a fraction of the memory cost. For most manufacturing use cases — document Q&A, anomaly explanation, work order drafting — that 15% capability gap is invisible. Benchmark on your actual use cases, not on generic benchmarks, and quantize to fit your hardware.</p>
+
+      <hr class="divider">
+
+      <p>Harmony Core — the on-premises agent stack this architecture is based on — is a commercial product at <a href="https://harmony-ai.com">Harmony AI</a>. The architecture patterns here are complete enough to implement independently.</p>
+
+      <p>Questions or pushback: <a href="mailto:r.david.long@gmail.com">email me</a> or find me on <a href="https://www.linkedin.com/in/rich-long-mba/">LinkedIn</a>.</p>
+
+      <p>Next in this series: <strong>Multi-Tenant AI Agents</strong> — session isolation patterns, pluggable adapter architecture, and role-based tool access in FastAPI.</p>
+
+    </article>
+
+    <footer>
+      <a href="/">&larr; drakenix.com</a>
+      <a href="/writing/">More writing</a>
+    </footer>
+  </div>
+</body>
+</html>
