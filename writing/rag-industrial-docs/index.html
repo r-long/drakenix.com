@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>RAG for Industrial Documentation: What Actually Works | Rich Long</title>
+  <meta name="description" content="Lessons from building two RAG systems for manufacturing: chunking strategies for technical manuals, hybrid search with pgvector, self-hosted embeddings, citation-aware retrieval, and BYOM architecture.">
+  <meta name="author" content="Rich Long">
+  <meta name="keywords" content="RAG, retrieval augmented generation, industrial documentation, manufacturing AI, pgvector, hybrid search, embeddings, FastAPI, Python, document intelligence, BYOM">
+
+  <link rel="canonical" href="https://drakenix.com/writing/rag-industrial-docs/">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://drakenix.com/writing/rag-industrial-docs/">
+  <meta property="og:title" content="RAG for Industrial Documentation: What Actually Works">
+  <meta property="og:description" content="Chunking strategies for technical manuals, hybrid search with pgvector, self-hosted embeddings, citation-aware retrieval, and BYOM architecture.">
+  <meta property="og:site_name" content="Drakenix">
+  <meta property="article:author" content="Rich Long">
+  <meta property="article:published_time" content="2026-09-07">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="RAG for Industrial Documentation: What Actually Works">
+  <meta name="twitter:description" content="Chunking strategies, hybrid search with pgvector, self-hosted embeddings, and BYOM architecture for manufacturing RAG systems.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "RAG for Industrial Documentation: What Actually Works",
+    "description": "Lessons from building two RAG systems for manufacturing: chunking, pgvector hybrid search, self-hosted embeddings, citation-aware retrieval, and BYOM architecture.",
+    "author": { "@type": "Person", "name": "Rich Long", "url": "https://drakenix.com" },
+    "publisher": { "@type": "Organization", "name": "Drakenix", "url": "https://drakenix.com" },
+    "datePublished": "2026-09-07",
+    "url": "https://drakenix.com/writing/rag-industrial-docs/",
+    "keywords": ["RAG", "retrieval augmented generation", "manufacturing AI", "pgvector", "hybrid search", "industrial documentation", "embeddings"]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
+      --text: #e2e2e8; --text-muted: #7a7a8c;
+      --accent: #c084fc; --accent-dim: rgba(192,132,252,0.12);
+      --orange: #fb923c; --orange-dim: rgba(251,146,60,0.12);
+      --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+      --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+    }
+    body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; }
+    nav { position:sticky; top:0; z-index:10; background:rgba(10,10,15,0.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:14px 0; }
+    .nav-inner { max-width:760px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:16px; }
+    .nav-logo { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; color:var(--accent); letter-spacing:2px; text-transform:uppercase; text-decoration:none; }
+    .nav-sep { color:var(--border); }
+    .nav-crumb { font-size:13px; color:var(--text-muted); }
+    .container { max-width:720px; margin:0 auto; padding:0 24px; }
+    .article-header { padding:64px 0 48px; border-bottom:1px solid var(--border); margin-bottom:48px; }
+    .article-tag { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:var(--blue); background:var(--blue-dim); padding:4px 10px; border-radius:4px; text-transform:uppercase; letter-spacing:1px; display:inline-block; margin-bottom:20px; }
+    .article-title { font-size:clamp(1.8rem,4vw,2.6rem); font-weight:700; line-height:1.2; letter-spacing:-0.02em; margin-bottom:20px; }
+    .article-subtitle { font-size:1.1rem; color:var(--text-muted); line-height:1.7; max-width:600px; margin-bottom:28px; }
+    .article-meta { display:flex; align-items:center; gap:16px; font-size:13px; color:var(--text-muted); flex-wrap:wrap; }
+    .toc { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:48px; }
+    .toc-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; }
+    .toc ol { padding-left:20px; display:flex; flex-direction:column; gap:6px; }
+    .toc a { font-size:14px; color:var(--text-muted); text-decoration:none; transition:color 0.2s; }
+    .toc a:hover { color:var(--accent); }
+    .prose { margin-bottom:80px; }
+    .prose h2 { font-size:1.5rem; font-weight:700; letter-spacing:-0.01em; margin:56px 0 20px; padding-top:8px; }
+    .prose h3 { font-size:1.1rem; font-weight:600; margin:36px 0 14px; color:var(--text); }
+    .prose p { font-size:15.5px; line-height:1.85; color:#c8c8d0; margin-bottom:20px; }
+    .prose strong { color:var(--text); font-weight:600; }
+    .prose a { color:var(--accent); text-decoration:none; border-bottom:1px solid rgba(192,132,252,0.3); }
+    .prose a:hover { border-bottom-color:var(--accent); }
+    .prose ul, .prose ol { padding-left:24px; margin-bottom:20px; display:flex; flex-direction:column; gap:8px; }
+    .prose li { font-size:15.5px; line-height:1.75; color:#c8c8d0; }
+    .prose pre { background:#0d0d14; border:1px solid var(--border); border-radius:10px; padding:20px; overflow-x:auto; margin:24px 0; }
+    .code-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:block; }
+    .prose pre code { font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; color:#d4d4d8; }
+    .prose code:not(pre code) { font-family:'JetBrains Mono',monospace; font-size:13px; background:rgba(192,132,252,0.08); color:var(--accent); padding:2px 6px; border-radius:4px; }
+    .callout { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:16px 20px; margin:28px 0; }
+    .callout.orange { border-left-color:var(--orange); }
+    .callout.green { border-left-color:var(--green); }
+    .callout.blue { border-left-color:var(--blue); }
+    .callout p { font-size:14px; color:var(--text-muted); margin-bottom:0; }
+    .prose table { width:100%; border-collapse:collapse; font-size:14px; margin:24px 0; }
+    .prose th { text-align:left; padding:10px 14px; background:var(--surface); color:var(--text-muted); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+    .prose td { padding:10px 14px; border-bottom:1px solid var(--border); color:#c8c8d0; }
+    .prose tr:last-child td { border-bottom:none; }
+    .divider { border:none; border-top:1px solid var(--border); margin:48px 0; }
+    footer { padding:40px 0 60px; border-top:1px solid var(--border); color:var(--text-muted); font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+    footer a { color:var(--text-muted); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+    @media(max-width:540px){.article-header{padding:40px 0 32px;}nav{display:none;}}
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">drakenix</a>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">Writing</span>
+      <span class="nav-sep">/</span>
+      <span class="nav-crumb">RAG for Industrial Docs</span>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="article-header">
+      <span class="article-tag">RAG</span>
+      <h1 class="article-title">RAG for Industrial Documentation: What Actually Works</h1>
+      <p class="article-subtitle">Lessons from building two RAG systems for manufacturing — chunking strategies for technical manuals, hybrid search with pgvector, self-hosted embeddings, citation-aware retrieval, and why BYOM architecture matters when the customer is a factory.</p>
+      <div class="article-meta">
+        <span>Rich Long</span>
+        <span>·</span>
+        <span>September 2026</span>
+        <span>·</span>
+        <span>~14 min read</span>
+      </div>
+    </header>
+
+    <nav class="toc">
+      <div class="toc-label">Contents</div>
+      <ol>
+        <li><a href="#problem">Why industrial docs break standard RAG</a></li>
+        <li><a href="#chunking">The chunking problem</a></li>
+        <li><a href="#embeddings">Self-hosted embeddings with Hugging Face TEI</a></li>
+        <li><a href="#hybrid">Hybrid search: semantic + keyword</a></li>
+        <li><a href="#pgvector">pgvector in practice</a></li>
+        <li><a href="#citations">Citation-aware retrieval</a></li>
+        <li><a href="#safety">Safety disclaimers</a></li>
+        <li><a href="#byom">BYOM architecture</a></li>
+        <li><a href="#lessons">What I'd do differently</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+
+      <h2 id="problem">Why industrial docs break standard RAG</h2>
+
+      <p>The standard RAG tutorial has you chunking a PDF into 512-token blocks, embedding them, sticking them in a vector store, and calling it done. That works fine for a company wiki or a knowledge base full of prose. It falls apart on industrial documentation — and the failures are specific enough to be worth understanding before you write a line of code.</p>
+
+      <p>Here's what makes manufacturing documents different:</p>
+
+      <ul>
+        <li><strong>Dense tables and spec sheets.</strong> A pump specification PDF is 60% tables — flow rates, pressure ratings, torque values, part numbers. Naive chunking splits tables mid-row, destroys their structure, and produces embeddings that represent garbled nonsense.</li>
+        <li><strong>Procedural sequences that can't be reordered.</strong> Lockout/tagout procedures, startup sequences, calibration steps — these are ordered lists where step 7 is meaningless without steps 1-6. Retrieving step 7 in isolation and asking an LLM to answer a question about it is actively dangerous.</li>
+        <li><strong>Cross-references everywhere.</strong> "Refer to Section 4.2.3 for torque specifications." A chunk of text with that sentence is useless without the context it's pointing to. Standard RAG doesn't follow references — it retrieves the chunk and stops.</li>
+        <li><strong>Safety-critical content.</strong> An LLM that confidently answers a question about electrical isolation procedures based on a poorly-retrieved chunk, without surfacing the relevant warnings, is a liability. The failure mode isn't "wrong answer" — it's "wrong answer someone acts on."</li>
+        <li><strong>Data sovereignty requirements.</strong> Many manufacturers will not send their process documentation to a third-party API. Their SOPs contain trade secrets, proprietary formulations, or competitive IP. The default assumption has to be on-premises or private cloud.</li>
+      </ul>
+
+      <p>I built two RAG systems against this problem set — <strong>The Guide</strong> (document intelligence for operators) and <strong>QuoteForge</strong> (semantic search over historical RFPs for estimators). Different domains, same core challenges. Here's what I learned.</p>
+
+      <h2 id="chunking">The chunking problem</h2>
+
+      <p>Chunk size and strategy is the most underrated decision in a RAG system. Get it wrong and no amount of prompt engineering rescues you.</p>
+
+      <h3>What doesn't work</h3>
+
+      <p><strong>Fixed-size token chunking</strong> — splitting every 512 tokens with 50-token overlap — is the tutorial default. It's fine for prose-heavy documents where ideas span paragraphs. For technical manuals it destroys structure constantly: it splits tables, breaks numbered lists mid-step, and separates warnings from the procedures they apply to.</p>
+
+      <h3>What does work: structure-aware chunking</h3>
+
+      <p>Industrial documents have structure. Use it. The approach I landed on:</p>
+
+      <ol>
+        <li><strong>Parse the document structure first.</strong> Extract headings, sections, tables, and lists as distinct elements before chunking. A PDF parser that gives you raw text loses this — use one that preserves structure (PyMuPDF for PDFs, python-docx for Word files).</li>
+        <li><strong>Chunk at section boundaries, not token counts.</strong> A section headed "3.4 Electrical Isolation Procedure" is a natural unit. Keep it together, even if it's 800 tokens.</li>
+        <li><strong>Keep tables intact.</strong> A table that gets split is worse than no table at all. If a table is too large, chunk it by row groups — but never split mid-row.</li>
+        <li><strong>Prepend context to every chunk.</strong> The retriever doesn't know what document a chunk came from. Prepend the document title, section heading, and page number to every chunk before embedding. This sounds obvious; most implementations skip it.</li>
+      </ol>
+
+      <span class="code-label">app/core/chunker.py</span>
+      <pre><code>import fitz  # PyMuPDF
+from dataclasses import dataclass
+
+@dataclass
+class Chunk:
+    content: str
+    source_doc: str
+    section: str
+    page: int
+    chunk_type: str   # "prose", "table", "procedure"
+
+def chunk_document(pdf_path: str, doc_name: str) -> list[Chunk]:
+    doc = fitz.open(pdf_path)
+    chunks = []
+    current_section = "Introduction"
+
+    for page_num, page in enumerate(doc, start=1):
+        blocks = page.get_text("dict")["blocks"]
+
+        for block in blocks:
+            if block["type"] == 0:  # text block
+                text = " ".join(
+                    span["text"]
+                    for line in block["lines"]
+                    for span in line["spans"]
+                ).strip()
+
+                if not text:
+                    continue
+
+                # Detect section headings by font size
+                avg_size = sum(
+                    span["size"]
+                    for line in block["lines"]
+                    for span in line["spans"]
+                ) / max(1, sum(len(line["spans"]) for line in block["lines"]))
+
+                if avg_size > 13:  # heading threshold — tune per document
+                    current_section = text
+                    continue
+
+                # Build contextual prefix for every chunk
+                context_prefix = (
+                    f"Document: {doc_name}\n"
+                    f"Section: {current_section}\n"
+                    f"Page: {page_num}\n\n"
+                )
+
+                chunks.append(Chunk(
+                    content=context_prefix + text,
+                    source_doc=doc_name,
+                    section=current_section,
+                    page=page_num,
+                    chunk_type="prose",
+                ))
+
+    return chunks</code></pre>
+
+      <div class="callout orange">
+        <p><strong>On procedures specifically:</strong> When you detect a numbered list (step 1, step 2...), keep the entire procedure as one chunk and tag it <code>chunk_type="procedure"</code>. At retrieval time, you can boost procedure chunks in rankings when the query contains action verbs — "how to", "steps to", "procedure for". Don't split them.</p>
+      </div>
+
+      <h2 id="embeddings">Self-hosted embeddings with Hugging Face TEI</h2>
+
+      <p>You have two options for embeddings: a hosted API (OpenAI, Cohere) or a self-hosted model. For most projects the hosted API is fine. For manufacturing customers, it's often a non-starter — you're sending document content to a third-party endpoint, and that document might contain proprietary process information.</p>
+
+      <p><strong>Hugging Face Text Embeddings Inference (TEI)</strong> is the right answer here. It's a high-performance inference server for embedding models, ships as a Docker image, and runs on CPU or GPU. You get consistent embeddings that don't change when a provider silently upgrades their model, and nothing leaves your infrastructure.</p>
+
+      <span class="code-label">docker-compose.yml (embeddings service)</span>
+      <pre><code>services:
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    ports:
+      - "8081:80"
+    volumes:
+      - ./models:/data
+    command: --model-id BAAI/bge-base-en-v1.5 --port 80
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3</code></pre>
+
+      <p>I use <code>BAAI/bge-base-en-v1.5</code> — solid performance, 768 dimensions, runs comfortably on CPU for document indexing workloads. For real-time retrieval on CPU you'll get ~50ms per query, which is fine. If you need lower latency, switch to <code>bge-small-en-v1.5</code> (384 dims, faster) or add a GPU.</p>
+
+      <span class="code-label">app/core/embeddings.py</span>
+      <pre><code>import httpx
+from app.config import settings
+
+EMBEDDING_DIM = 768  # BAAI/bge-base-en-v1.5
+
+async def embed_texts(texts: list[str]) -> list[list[float]]:
+    """
+    Call the TEI service to embed a batch of texts.
+    Returns a list of embedding vectors.
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{settings.EMBEDDING_SERVICE_URL}/embed",
+            json={"inputs": texts, "normalize": True},
+        )
+        response.raise_for_status()
+        return response.json()
+
+async def embed_query(query: str) -> list[float]:
+    """Embed a single search query."""
+    vectors = await embed_texts([query])
+    return vectors[0]</code></pre>
+
+      <div class="callout">
+        <p><strong>Normalize your embeddings.</strong> Passing <code>"normalize": True</code> to TEI returns unit vectors, which makes cosine similarity equivalent to dot product. pgvector's <code>&lt;-&gt;</code> operator (L2 distance) on normalized vectors gives you cosine similarity — no extra steps needed.</p>
+      </div>
+
+      <h2 id="hybrid">Hybrid search: semantic + keyword</h2>
+
+      <p>Pure semantic search has a failure mode that bites hard in technical documentation: <strong>exact-match recall for part numbers, model codes, and technical terms</strong>.</p>
+
+      <p>If a technician asks "what's the torque spec for the M12 bolt on the 3500-XR pump?" — semantic search will retrieve chunks about torque in general, bolts in general, pumps in general. The model number "3500-XR" is a token that carries no semantic meaning. Keyword search (BM25) finds it instantly.</p>
+
+      <p>The solution is hybrid search: run both, then combine the rankings.</p>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Good at</th><th>Bad at</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Semantic (vector)</td><td>Conceptual queries, paraphrasing, "how do I..." questions</td><td>Exact codes, part numbers, model names</td></tr>
+          <tr><td>Keyword (BM25)</td><td>Exact terms, part numbers, model codes, serial numbers</td><td>Synonyms, natural language, conceptual queries</td></tr>
+          <tr><td>Hybrid (both)</td><td>Everything</td><td>Slower, needs score normalization</td></tr>
+        </tbody>
+      </table>
+
+      <p>I use <strong>Reciprocal Rank Fusion (RRF)</strong> to merge the two result lists. It's simple, parameter-free, and consistently outperforms weighted score combinations in practice.</p>
+
+      <span class="code-label">app/db/repositories/documents.py</span>
+      <pre><code>from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+RRF_K = 60  # standard RRF constant
+
+async def hybrid_search(
+    query: str,
+    query_embedding: list[float],
+    db: AsyncSession,
+    top_k: int = 8,
+) -> list[dict]:
+    """
+    Hybrid search: semantic vector search + BM25 keyword search,
+    merged with Reciprocal Rank Fusion.
+    """
+    sql = text("""
+        WITH semantic AS (
+            SELECT id, content, source_doc, section, page,
+                   ROW_NUMBER() OVER (ORDER BY embedding <-> :embedding) AS rank
+            FROM document_chunks
+            ORDER BY embedding <-> :embedding
+            LIMIT 20
+        ),
+        keyword AS (
+            SELECT id, content, source_doc, section, page,
+                   ROW_NUMBER() OVER (
+                       ORDER BY ts_rank(search_vector, plainto_tsquery('english', :query)) DESC
+                   ) AS rank
+            FROM document_chunks
+            WHERE search_vector @@ plainto_tsquery('english', :query)
+            ORDER BY rank
+            LIMIT 20
+        ),
+        rrf AS (
+            SELECT
+                COALESCE(s.id, k.id) AS id,
+                COALESCE(s.content, k.content) AS content,
+                COALESCE(s.source_doc, k.source_doc) AS source_doc,
+                COALESCE(s.section, k.section) AS section,
+                COALESCE(s.page, k.page) AS page,
+                COALESCE(1.0 / (:k + s.rank), 0) +
+                COALESCE(1.0 / (:k + k.rank), 0) AS rrf_score
+            FROM semantic s
+            FULL OUTER JOIN keyword k ON s.id = k.id
+        )
+        SELECT * FROM rrf ORDER BY rrf_score DESC LIMIT :top_k
+    """)
+
+    result = await db.execute(sql, {
+        "embedding": query_embedding,
+        "query": query,
+        "k": RRF_K,
+        "top_k": top_k,
+    })
+
+    return [dict(row._mapping) for row in result.fetchall()]</code></pre>
+
+      <h2 id="pgvector">pgvector in practice</h2>
+
+      <p>pgvector turns PostgreSQL into a vector database. No separate Pinecone account, no Weaviate instance — your embeddings live in the same database as everything else, with full SQL expressiveness for filtering and joining.</p>
+
+      <span class="code-label">Database setup</span>
+      <pre><code>-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- needed for GIN text indexing
+
+-- Document chunks table
+CREATE TABLE document_chunks (
+    id          SERIAL PRIMARY KEY,
+    source_doc  TEXT NOT NULL,
+    section     TEXT,
+    page        INTEGER,
+    chunk_type  TEXT DEFAULT 'prose',
+    content     TEXT NOT NULL,
+    embedding   vector(768),          -- BAAI/bge-base-en-v1.5 dimensions
+    search_vector tsvector            -- for BM25 keyword search
+);
+
+-- Vector index (IVFFlat — good for up to a few million chunks)
+CREATE INDEX idx_chunks_embedding
+    ON document_chunks
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+-- Full-text search index
+CREATE INDEX idx_chunks_fts
+    ON document_chunks USING GIN (search_vector);
+
+-- Keep search_vector updated automatically
+CREATE TRIGGER update_search_vector
+    BEFORE INSERT OR UPDATE ON document_chunks
+    FOR EACH ROW EXECUTE FUNCTION
+    tsvector_update_trigger(search_vector, 'pg_catalog.english', content);</code></pre>
+
+      <div class="callout blue">
+        <p><strong>IVFFlat vs HNSW:</strong> pgvector now supports both. IVFFlat is faster to build and uses less memory; HNSW gives better recall at query time. For document counts under ~500k, the difference is academic. Start with IVFFlat (<code>lists = sqrt(row_count)</code> is a reasonable rule of thumb), switch to HNSW if you need better recall.</p>
+      </div>
+
+      <h2 id="citations">Citation-aware retrieval</h2>
+
+      <p>This is the feature that actually makes the system usable in a manufacturing context. An LLM that answers "what's the max operating pressure?" without telling you <em>which document and which section</em> that answer came from is not a tool an experienced engineer will trust.</p>
+
+      <p>Citation-aware retrieval means: every retrieved chunk carries its provenance, and you instruct the LLM to cite its sources in the answer.</p>
+
+      <span class="code-label">app/core/qa.py</span>
+      <pre><code>import anthropic
+from app.config import settings
+
+SYSTEM_PROMPT = """You are a technical documentation assistant for manufacturing operations.
+
+When answering questions:
+1. Base your answer ONLY on the provided document excerpts
+2. Cite your sources inline using [Doc: {source}, Section: {section}, p.{page}] format
+3. If the excerpts don't contain enough information to answer, say so explicitly
+4. If the question involves safety procedures, always include relevant warnings from the excerpts
+5. Do not invent specifications, part numbers, or procedures
+
+Accuracy matters more than completeness. A partial answer with clear citations is better
+than a confident answer without them."""
+
+async def answer_question(
+    query: str,
+    chunks: list[dict],
+    client: anthropic.AsyncAnthropic,
+) -> dict:
+    # Format retrieved chunks with their provenance
+    context_parts = []
+    for i, chunk in enumerate(chunks, start=1):
+        context_parts.append(
+            f"[Excerpt {i}]\n"
+            f"Source: {chunk['source_doc']}, "
+            f"Section: {chunk['section']}, "
+            f"Page: {chunk['page']}\n"
+            f"{chunk['content']}"
+        )
+    context = "\n\n---\n\n".join(context_parts)
+
+    message = await client.messages.create(
+        model=settings.LLM_MODEL,
+        max_tokens=512,
+        system=SYSTEM_PROMPT,
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Question: {query}\n\n"
+                f"Document excerpts:\n\n{context}"
+            )
+        }]
+    )
+
+    answer_text = message.content[0].text
+
+    # Extract which sources were actually cited
+    cited_sources = [
+        {"doc": c["source_doc"], "section": c["section"], "page": c["page"]}
+        for c in chunks
+        if c["source_doc"] in answer_text
+    ]
+
+    return {
+        "answer": answer_text,
+        "sources": cited_sources,
+        "chunks_retrieved": len(chunks),
+    }</code></pre>
+
+      <p>The key instruction in the system prompt is "if the excerpts don't contain enough information, say so explicitly." Without this, LLMs hallucinate plausible-sounding specs when the retrieved context is thin. For a knowledge base about pump pressures and torque values, a hallucinated spec is worse than no answer at all.</p>
+
+      <h2 id="safety">Safety disclaimers</h2>
+
+      <p>This is the part most RAG tutorials skip entirely because it doesn't come up for SaaS documentation. It comes up constantly for manufacturing.</p>
+
+      <p>The pattern I use: tag certain document sections as safety-critical during ingestion (lockout/tagout procedures, electrical isolation, chemical handling). At retrieval time, if any retrieved chunk is tagged safety-critical, or if the query matches a safety-related pattern, append the relevant safety sections to the context automatically and instruct the LLM to surface them.</p>
+
+      <span class="code-label">app/core/safety.py</span>
+      <pre><code>import re
+
+SAFETY_QUERY_PATTERNS = [
+    r'\b(lockout|tagout|loto)\b',
+    r'\b(electrical|voltage|energize|de-energize)\b',
+    r'\b(hazardous|chemical|flammable|explosive)\b',
+    r'\b(confined space|oxygen deficient)\b',
+    r'\bhow to (disconnect|remove|bypass|override)\b',
+]
+
+SAFETY_DISCLAIMER = (
+    "\n\n⚠️ SAFETY NOTICE: This information relates to safety-critical procedures. "
+    "Always follow your facility's lockout/tagout program and applicable regulations "
+    "(OSHA 29 CFR 1910.147) before performing any maintenance. "
+    "This system provides reference information only — consult qualified personnel "
+    "before proceeding with any safety-critical work."
+)
+
+def requires_safety_context(query: str, chunks: list[dict]) -> bool:
+    """Returns True if the query or retrieved chunks touch safety-critical content."""
+    query_lower = query.lower()
+    for pattern in SAFETY_QUERY_PATTERNS:
+        if re.search(pattern, query_lower, re.IGNORECASE):
+            return True
+    return any(c.get("chunk_type") == "safety" for c in chunks)
+
+def add_safety_disclaimer(answer: str, query: str, chunks: list[dict]) -> str:
+    if requires_safety_context(query, chunks):
+        return answer + SAFETY_DISCLAIMER
+    return answer</code></pre>
+
+      <div class="callout orange">
+        <p><strong>This isn't just CYA language.</strong> The disclaimer tells the user where to look for authoritative guidance (their facility's LOTO program, OSHA 1910.147) rather than treating the RAG answer as the final word. That's the right posture for a tool operating in a safety-critical environment.</p>
+      </div>
+
+      <h2 id="byom">BYOM architecture</h2>
+
+      <p>BYOM — Bring Your Own Model — is the architectural pattern that makes this deployable to actual manufacturing customers. The idea: your application is LLM-agnostic. The customer configures which provider to use; you support at minimum Azure OpenAI and AWS Bedrock, because enterprise manufacturing customers are on one of those two clouds.</p>
+
+      <p>This matters for two reasons:</p>
+      <ol>
+        <li><strong>Data residency.</strong> Azure OpenAI with the data privacy addendum keeps data in the customer's Azure tenant. AWS Bedrock keeps it in their VPC. Neither routes through a shared API endpoint.</li>
+        <li><strong>Procurement reality.</strong> Many large manufacturers already have enterprise agreements with Azure or AWS. Letting them use that existing spend removes a procurement blocker.</li>
+      </ol>
+
+      <span class="code-label">app/core/llm.py</span>
+      <pre><code>from abc import ABC, abstractmethod
+from app.config import settings
+
+class LLMClient(ABC):
+    @abstractmethod
+    async def complete(self, system: str, user: str, max_tokens: int = 512) -> str:
+        ...
+
+class AzureOpenAIClient(LLMClient):
+    def __init__(self):
+        from openai import AsyncAzureOpenAI
+        self.client = AsyncAzureOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            api_key=settings.AZURE_OPENAI_API_KEY,
+            api_version="2024-02-01",
+        )
+
+    async def complete(self, system: str, user: str, max_tokens: int = 512) -> str:
+        response = await self.client.chat.completions.create(
+            model=settings.AZURE_OPENAI_DEPLOYMENT,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+        )
+        return response.choices[0].message.content
+
+class BedrockClient(LLMClient):
+    def __init__(self):
+        import boto3, json
+        self.client = boto3.client("bedrock-runtime", region_name=settings.AWS_REGION)
+        self.model_id = settings.BEDROCK_MODEL_ID
+
+    async def complete(self, system: str, user: str, max_tokens: int = 512) -> str:
+        import asyncio, json
+        body = json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": max_tokens,
+            "system": system,
+            "messages": [{"role": "user", "content": user}],
+        })
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: self.client.invoke_model(modelId=self.model_id, body=body)
+        )
+        return json.loads(response["body"].read())["content"][0]["text"]
+
+def get_llm_client() -> LLMClient:
+    """Factory — reads LLM_PROVIDER from environment."""
+    provider = settings.LLM_PROVIDER.lower()
+    if provider == "azure":
+        return AzureOpenAIClient()
+    elif provider == "bedrock":
+        return BedrockClient()
+    raise ValueError(f"Unknown LLM provider: {provider}")</code></pre>
+
+      <p>Swapping providers is a one-line environment variable change. No code changes, no redeployment of logic. For on-premises deployments, you add an <code>OllamaClient</code> that points at a local inference server — same interface, same prompts, different endpoint.</p>
+
+      <h2 id="lessons">What I'd do differently</h2>
+
+      <p><strong>Invest more in document ingestion pipeline quality.</strong> The retrieval quality ceiling is set by how well you parsed and chunked the documents. I underinvested here early on and paid for it in retrieval precision. A week spent on a robust ingestion pipeline — handling PDFs, Word docs, HTML manuals, and structured data sheets correctly — is worth more than a week spent tuning prompts.</p>
+
+      <p><strong>Add a reranker.</strong> Vector search returns the most semantically similar chunks, not necessarily the most useful ones for answering the specific question. A cross-encoder reranker (e.g., <code>cross-encoder/ms-marco-MiniLM-L-6-v2</code> via Hugging Face) scores each retrieved chunk against the query directly and reorders them. It adds latency but meaningfully improves answer quality for complex questions.</p>
+
+      <p><strong>Evaluate with real queries, not synthetic benchmarks.</strong> I built an evaluation set using LLM-generated questions. Those questions look like what an LLM thinks a technician would ask, not what actual technicians ask. The gap is significant. Get five real queries from real users in the first week and use those as your eval set instead.</p>
+
+      <p><strong>Chunk overlap matters less than you think.</strong> I spent time tuning chunk overlap (the number of tokens shared between adjacent chunks to preserve context across boundaries). In practice, the context prefix approach — prepending document title, section, and page to every chunk — does more work than overlap tuning. If the retriever pulls the right chunk, the prefix tells the LLM where it came from. That's what you actually need.</p>
+
+      <hr class="divider">
+
+      <p>The Guide is a commercial product and the full source isn't public, but this architecture is complete enough to build from. The QuoteForge repo — which uses the same hybrid search approach for RFP data — <a href="https://github.com/r-long/mcp-quoting-system">has some public pieces</a> if you want to see code in context.</p>
+
+      <p>Questions or pushback? <a href="mailto:r.david.long@gmail.com">Email me</a> or find me on <a href="https://www.linkedin.com/in/rich-long-mba/">LinkedIn</a>.</p>
+
+      <p>Next in this series: <strong>MCP as an Enterprise Integration Primitive</strong> — why Model Context Protocol is the missing layer between AI agents and the legacy systems that run manufacturing, and how to build adapters that hold up in production.</p>
+
+    </article>
+
+    <footer>
+      <a href="/">&larr; drakenix.com</a>
+      <a href="/writing/">More writing</a>
+    </footer>
+  </div>
+</body>
+</html>
