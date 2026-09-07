@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Writing | Rich Long</title>
+  <meta name="description" content="Technical tutorials on building AI systems for manufacturing and enterprise — predictive maintenance, RAG, MCP integrations, on-premises AI, and multi-tenant agents.">
+  <meta name="author" content="Rich Long">
+  <meta name="keywords" content="manufacturing AI, predictive maintenance, RAG, MCP, enterprise AI, industrial AI, Python, FastAPI, pgvector, multi-tenant agents">
+
+  <link rel="canonical" href="https://drakenix.com/writing/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://drakenix.com/writing/">
+  <meta property="og:title" content="Writing | Rich Long">
+  <meta property="og:description" content="Technical tutorials on building AI systems for manufacturing and enterprise.">
+  <meta property="og:site_name" content="Drakenix">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Writing | Rich Long">
+  <meta name="twitter:description" content="Technical tutorials on building AI systems for manufacturing and enterprise.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "Drakenix Writing",
+    "description": "Technical tutorials on building AI systems for manufacturing and enterprise.",
+    "url": "https://drakenix.com/writing/",
+    "author": { "@type": "Person", "name": "Rich Long", "url": "https://drakenix.com" },
+    "blogPost": [
+      {
+        "@type": "BlogPosting",
+        "headline": "Building a Predictive Maintenance Platform from Scratch",
+        "url": "https://drakenix.com/writing/predictive-maintenance/",
+        "datePublished": "2026-09-07",
+        "keywords": ["predictive maintenance", "Isolation Forest", "FastAPI", "manufacturing AI"]
+      },
+      {
+        "@type": "BlogPosting",
+        "headline": "RAG for Industrial Documentation: What Actually Works",
+        "url": "https://drakenix.com/writing/rag-industrial-docs/",
+        "datePublished": "2026-09-07",
+        "keywords": ["RAG", "pgvector", "industrial documentation", "hybrid search"]
+      },
+      {
+        "@type": "BlogPosting",
+        "headline": "MCP as an Enterprise Integration Primitive",
+        "url": "https://drakenix.com/writing/mcp-enterprise-integration/",
+        "datePublished": "2026-09-14",
+        "keywords": ["MCP", "Model Context Protocol", "enterprise integration", "SCADA", "ERP"]
+      },
+      {
+        "@type": "BlogPosting",
+        "headline": "On-Premises vs. Cloud AI for Manufacturing",
+        "url": "https://drakenix.com/writing/onprem-vs-cloud-ai/",
+        "datePublished": "2026-09-21",
+        "keywords": ["on-premises AI", "edge AI", "Ollama", "manufacturing AI", "data sovereignty"]
+      },
+      {
+        "@type": "BlogPosting",
+        "headline": "Multi-Tenant AI Agents: Session Isolation Patterns",
+        "url": "https://drakenix.com/writing/multi-tenant-ai-agents/",
+        "datePublished": "2026-09-28",
+        "keywords": ["multi-tenant", "AI agents", "session isolation", "FastAPI", "Redis"]
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
+      --text: #e2e2e8; --text-muted: #7a7a8c;
+      --accent: #c084fc; --accent-dim: rgba(192,132,252,0.12);
+      --orange: #fb923c; --orange-dim: rgba(251,146,60,0.12);
+      --green: #4ade80; --green-dim: rgba(74,222,128,0.12);
+      --blue: #60a5fa; --blue-dim: rgba(96,165,250,0.12);
+    }
+    body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; min-height:100vh; overflow-x:hidden; }
+    body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px); background-size:60px 60px; pointer-events:none; z-index:0; }
+    .glow { position:fixed; border-radius:50%; filter:blur(120px); opacity:0.12; pointer-events:none; z-index:0; }
+    .glow-1 { width:500px; height:500px; background:var(--accent); top:-150px; right:-100px; }
+    .glow-2 { width:350px; height:350px; background:var(--orange); bottom:-80px; left:-80px; }
+    nav { position:sticky; top:0; z-index:10; background:rgba(10,10,15,0.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:14px 0; }
+    .nav-inner { max-width:760px; margin:0 auto; padding:0 24px; display:flex; align-items:center; justify-content:space-between; }
+    .nav-logo { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; color:var(--accent); letter-spacing:2px; text-transform:uppercase; text-decoration:none; }
+    .nav-links { display:flex; gap:24px; list-style:none; }
+    .nav-links a { font-size:13px; color:var(--text-muted); text-decoration:none; transition:color 0.2s; }
+    .nav-links a:hover { color:var(--text); }
+    .container { position:relative; z-index:1; max-width:760px; margin:0 auto; padding:0 24px; }
+    header { padding:64px 0 48px; }
+    .section-label { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:var(--accent); letter-spacing:3px; text-transform:uppercase; margin-bottom:16px; }
+    h1 { font-size:clamp(2rem,4vw,2.8rem); font-weight:700; line-height:1.15; letter-spacing:-0.02em; margin-bottom:16px; }
+    .subtitle { font-size:1.05rem; color:var(--text-muted); line-height:1.7; max-width:540px; }
+    .divider { border:none; border-top:1px solid var(--border); margin:48px 0; }
+
+    /* Article cards */
+    .articles { display:flex; flex-direction:column; gap:0; }
+    .article-card {
+      display:block;
+      text-decoration:none;
+      padding:28px 0;
+      border-bottom:1px solid var(--border);
+      transition:all 0.2s;
+      position:relative;
+    }
+    .article-card:first-child { border-top:1px solid var(--border); }
+    .article-card::before {
+      content:'';
+      position:absolute;
+      left:-24px; right:-24px; top:0; bottom:0;
+      background:var(--accent-dim);
+      opacity:0;
+      transition:opacity 0.2s;
+      border-radius:8px;
+    }
+    .article-card:hover::before { opacity:1; }
+    .article-meta {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+      position:relative;
+    }
+    .article-date { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted); }
+    .article-tag {
+      font-family:'JetBrains Mono',monospace;
+      font-size:10px;
+      padding:2px 8px;
+      border-radius:4px;
+      font-weight:500;
+    }
+    .tag-maintenance { background:var(--orange-dim); color:var(--orange); }
+    .tag-rag { background:var(--blue-dim); color:var(--blue); }
+    .tag-integration { background:var(--green-dim); color:var(--green); }
+    .tag-architecture { background:var(--orange-dim); color:var(--orange); }
+    .tag-agents { background:var(--accent-dim); color:var(--accent); }
+    .read-time { font-size:12px; color:var(--text-muted); margin-left:auto; }
+    .article-title { font-size:1.2rem; font-weight:600; color:var(--text); margin-bottom:8px; position:relative; transition:color 0.2s; }
+    .article-card:hover .article-title { color:var(--accent); }
+    .article-desc { font-size:14px; color:var(--text-muted); line-height:1.7; max-width:600px; position:relative; }
+    .article-arrow {
+      position:absolute;
+      right:0; top:50%;
+      transform:translateY(-50%);
+      color:var(--text-muted);
+      font-size:18px;
+      opacity:0;
+      transition:all 0.2s;
+    }
+    .article-card:hover .article-arrow { opacity:1; transform:translateY(-50%) translateX(4px); }
+
+    /* Series note */
+    .series-note {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:20px 24px;
+      margin-top:48px;
+      display:flex;
+      gap:16px;
+      align-items:flex-start;
+    }
+    .series-icon { font-size:20px; flex-shrink:0; margin-top:2px; }
+    .series-title { font-weight:600; font-size:14px; margin-bottom:4px; }
+    .series-desc { font-size:13px; color:var(--text-muted); line-height:1.6; }
+
+    footer { padding:40px 0 60px; border-top:1px solid var(--border); color:var(--text-muted); font-size:13px; display:flex; justify-content:space-between; align-items:center; margin-top:64px; }
+    footer a { color:var(--text-muted); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+    @media(max-width:540px) { header{padding:40px 0 32px;} .nav-links{display:none;} .article-arrow{display:none;} }
+  </style>
+</head>
+<body>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">drakenix</a>
+      <ul class="nav-links">
+        <li><a href="/#projects">Projects</a></li>
+        <li><a href="/writing/">Writing</a></li>
+        <li><a href="/#about">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header>
+      <div class="section-label">Writing</div>
+      <h1>Technical tutorials on<br>building industrial AI</h1>
+      <p class="subtitle">Deep dives on the problems that don't show up in demos — real code, real architecture decisions, and what I'd do differently.</p>
+    </header>
+
+    <div class="articles">
+
+      <a href="/writing/predictive-maintenance/" class="article-card">
+        <div class="article-meta">
+          <span class="article-date">Sep 2026</span>
+          <span class="article-tag tag-maintenance">Predictive Maintenance</span>
+          <span class="read-time">~15 min</span>
+        </div>
+        <div class="article-title">Building a Predictive Maintenance Platform from Scratch</div>
+        <div class="article-desc">Sensor data ingestion, per-asset Isolation Forest anomaly detection, health scoring, and an LLM advisor that explains failures in plain English. Full walkthrough with real code.</div>
+        <span class="article-arrow">→</span>
+      </a>
+
+      <a href="/writing/rag-industrial-docs/" class="article-card">
+        <div class="article-meta">
+          <span class="article-date">Sep 2026</span>
+          <span class="article-tag tag-rag">RAG</span>
+          <span class="read-time">~14 min</span>
+        </div>
+        <div class="article-title">RAG for Industrial Documentation: What Actually Works</div>
+        <div class="article-desc">Why standard RAG breaks on technical manuals — and what to do instead. Chunking strategies, hybrid search with pgvector, self-hosted embeddings, citation-aware retrieval, and BYOM architecture.</div>
+        <span class="article-arrow">→</span>
+      </a>
+
+      <a href="/writing/mcp-enterprise-integration/" class="article-card">
+        <div class="article-meta">
+          <span class="article-date">Sep 2026</span>
+          <span class="article-tag tag-integration">MCP</span>
+          <span class="read-time">~13 min</span>
+        </div>
+        <div class="article-title">MCP as an Enterprise Integration Primitive</div>
+        <div class="article-desc">Why Model Context Protocol is the missing layer between AI agents and enterprise systems. Building adapters for ERPs, SCADA historians, and legacy databases — with human-in-loop as a first-class pattern.</div>
+        <span class="article-arrow">→</span>
+      </a>
+
+      <a href="/writing/onprem-vs-cloud-ai/" class="article-card">
+        <div class="article-meta">
+          <span class="article-date">Sep 2026</span>
+          <span class="article-tag tag-architecture">Architecture</span>
+          <span class="read-time">~12 min</span>
+        </div>
+        <div class="article-title">On-Premises vs. Cloud AI for Manufacturing</div>
+        <div class="article-desc">Why SMB manufacturers can't just call the OpenAI API. Data sovereignty on the shop floor, hybrid inference routing, a fully local Docker Compose AI stack, and practical hardware recommendations.</div>
+        <span class="article-arrow">→</span>
+      </a>
+
+      <a href="/writing/multi-tenant-ai-agents/" class="article-card">
+        <div class="article-meta">
+          <span class="article-date">Sep 2026</span>
+          <span class="article-tag tag-agents">Agents</span>
+          <span class="read-time">~13 min</span>
+        </div>
+        <div class="article-title">Multi-Tenant AI Agents: Session Isolation Patterns</div>
+        <div class="article-desc">How to build AI agent infrastructure where users never see each other's data — pluggable adapters, Redis session caching, PostgreSQL persistence, and role-based tool access in FastAPI.</div>
+        <span class="article-arrow">→</span>
+      </a>
+
+    </div>
+
+    <div class="series-note">
+      <div class="series-icon">📬</div>
+      <div>
+        <div class="series-title">More coming</div>
+        <div class="series-desc">Next up: fine-tuning for industrial data, evaluation frameworks for production RAG, and MuleSoft integration patterns for AI workloads. Follow on <a href="https://www.linkedin.com/in/rich-long-mba/" style="color:var(--accent);text-decoration:none;">LinkedIn</a> to get notified.</div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="/">← drakenix.com</a>
+      <span>Rich Long</span>
+    </footer>
+  </div>
+</body>
+</html>
